@@ -6,7 +6,9 @@
 #include <random>
 #include <functional>
 
-net::IpAddress::IpAddress() noexcept {}
+net::IpAddress::IpAddress() noexcept 
+	: m_raw{0}
+{}
 
 net::IpAddress::IpAddress(byte_type f1, byte_type f2, byte_type f3, byte_type f4) noexcept
 	: m_raw{f1, f2, f3, f4}
@@ -60,7 +62,9 @@ bool net::IpAddress::operator!=(const IpAddress& right) const noexcept {
 	return !(*this == right);
 }
 
-net::MacAddress::MacAddress() noexcept {}
+net::MacAddress::MacAddress() noexcept 
+	: m_raw{0}
+{}
 
 net::MacAddress::MacAddress(byte_type f1, byte_type f2, byte_type f3, byte_type f4, byte_type f5, byte_type f6) noexcept
 	: m_raw{f1, f2, f3, f4, f5, f6}
@@ -116,12 +120,15 @@ bool net::MacAddress::operator!=(const MacAddress& right) const noexcept {
 
 net::MacAddress net::MacAddress::generate() noexcept
 {
-	using rand_engine_type = std::independent_bits_engine<std::default_random_engine, CHAR_BIT, byte_type>;
+	using rand_engine_type = std::independent_bits_engine<std::default_random_engine, CHAR_BIT, unsigned int>;
+
 	rand_engine_type rand_engine;
 
 	MacAddress v;
 
-	std::generate(std::begin(v.raw_array()), std::end(v.raw_array()), std::ref(rand_engine));
+	std::generate(std::begin(v.raw_array()), std::end(v.raw_array()), [&]() {
+		return static_cast<byte_type>(rand_engine());
+	});
 
 	return v;
 }
