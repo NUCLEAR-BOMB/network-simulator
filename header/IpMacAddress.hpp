@@ -16,6 +16,7 @@ public:
 
 	static constexpr auto size() noexcept { return std::extent<array_type>::value; }
 
+	IpAddress() noexcept;
 	IpAddress(byte_type f1, byte_type f2, byte_type f3, byte_type f4) noexcept;
 	IpAddress(const std::string& str);
 	IpAddress(const array_type& other_arr) noexcept;
@@ -43,6 +44,7 @@ public:
 
 	static constexpr auto size() noexcept { return std::extent<array_type>::value; }
 
+	MacAddress() noexcept;
 	MacAddress(byte_type f1, byte_type f2, byte_type f3, byte_type f4, byte_type f5, byte_type f6) noexcept;
 	MacAddress(const std::string& str);
 	MacAddress(const array_type& other_arr) noexcept;
@@ -57,6 +59,8 @@ public:
 
 	bool operator==(const MacAddress& right) const noexcept;
 	bool operator!=(const MacAddress& right) const noexcept;
+
+	static MacAddress generate() noexcept;
 
 private:
 	array_type m_raw;
