@@ -25,15 +25,26 @@ private:
 class Port
 {
 public:
-	using recive_function_type = std::function<void(const Packet&)>;
+	using recive_function_type = std::function<void(Port&, const Packet&)>;
 
-	Port(recive_function_type func) noexcept;
+	using CIDR_type = net::CIDR;
 
-	void send(const Port& other, const Packet& packet) const noexcept;
-	void recive(const Packet& packet) const noexcept;
+	using ip_type = typename net::CIDR::ip_type;
+	using ip_mask_type = typename net::CIDR::ip_mask_type;
+
+	Port(CIDR_type cidr, const recive_function_type& func) noexcept;
+
+	void send(Port& other, const Packet& packet) const noexcept;
+	void recive(const Packet& packet) noexcept;
+
+	const ip_type& ip() const noexcept;
+	const ip_mask_type& mask() const noexcept;
+
+	const CIDR_type& cidr() const noexcept;
 
 private:
-	recive_function_type m_recive_func;
+	const recive_function_type& m_recive_func;
+	CIDR_type m_cidr;
 };
 
 }

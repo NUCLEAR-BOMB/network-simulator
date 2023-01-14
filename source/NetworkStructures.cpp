@@ -172,7 +172,13 @@ net::IPMask::IPMask(size_type CIDR_prefix) noexcept
 {
 	std::fill(std::begin(m_raw), std::end(m_raw), std::numeric_limits<byte_type>::max());
 
-	this->to_int() >>= (MAX_CIDR_PREFIX() - CIDR_prefix);
+	to_int() >>= CIDR_prefix;
+
+	//++to_int();
+
+	to_int() = (m_raw[3]<<0) | (m_raw[2]<<8) | (m_raw[1]<<16) | (m_raw[0]<<24);
+
+	to_int() = ~to_int();
 }
 
 net::IPMask::IPMask(const std::string& str)
@@ -239,9 +245,23 @@ net::IP net::IPMask::operator&(net::IP ip) const noexcept
 	return ip;
 }
 
+#if 0
+static void verify_cidr(const net::CIDR::ip_type& ip, const net::CIDR::ip_mask_type& mask)
+{
+	static_assert(std::decay_t<decltype(ip)>::size() == std::decay_t<decltype(mask)>::size(), "");
+
+	for (size_t i = 0; i < ip.size(); i++)
+	{
+		if (ip.raw(i) <= mask.raw(i)) throw std::invalid_argument("Bad IP address for the Mask");
+	}
+}
+#endif
+
 net::CIDR::CIDR(ip_type ip, ip_mask_type ipmask) noexcept
 	: m_ip(std::move(ip)), m_mask(std::move(ipmask))
-{}
+{
+	//verify_cidr(m_ip, m_mask);
+}
 
 net::CIDR::CIDR(const std::string& str)
 {
@@ -252,6 +272,8 @@ net::CIDR::CIDR(const std::string& str)
 
 	const auto mask_str = str.substr(slash_pos + 1);
 	m_mask = net::IPMask(static_cast<net::IPMask::size_type>(std::stoi(mask_str)));
+
+	//verify_cidr(m_ip, m_mask);
 }
 
 net::CIDR::ip_type& net::CIDR::ip() noexcept {

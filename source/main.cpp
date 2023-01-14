@@ -5,21 +5,23 @@
 int main()
 {
 	using net::IP;
+	using net::IPMask;
+	using net::Port;
 
-	net::Device d1(net::CIDR("192.168.1.1/24"));
-	net::Device d2(net::CIDR("192.168.1.2/24"));
+	net::Device d1;
+	net::Device d2;
 
-	d1.add_connection(d2);
+	d1.add_connection(
+		net::CIDR("192.168.1.100/24"),
+		net::CIDR("192.168.1.250/24"),
+	d2);
 
-	const auto subn = d1.subnet();
-
-	//d1.send(d2.ip());
-
-	std::cout << "this ip: " << d2.ip().to_string() << '\n';
+	const auto& port0 = d1.port(0);
+	std::cout << "this ip: " << port0.ip().to_string() << " this ip mask: " << port0.mask().to_string() << '\n';
 
 	std::string dest_ip;
 	while (std::cin >> dest_ip)
 	{
-		d2.send(IP(dest_ip));
+		d1.send(IP(dest_ip));
 	}
 }

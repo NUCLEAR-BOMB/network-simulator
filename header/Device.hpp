@@ -5,6 +5,7 @@
 #include <vector>
 #include <utility>
 #include <functional>
+#include <memory>
 
 namespace net
 {
@@ -19,32 +20,32 @@ public:
 
 	using port_type = net::Port;
 
-	using connections_type = std::vector<std::reference_wrapper<const port_type>>;
+	using connections_type = std::vector<std::pair<std::unique_ptr<port_type>, port_type*>>;
 
-	Device(CIDR_type cidr) noexcept;
+	Device() noexcept;
 
-	void add_port(const port_type& other_port) noexcept;
-	void add_connection(Device& other) noexcept;
+	virtual ~Device() noexcept;
 
-	const ip_type& ip() const noexcept;
-	const ip_mask_type& mask() const noexcept;
+	port_type create_port(CIDR_type device_cidr) const noexcept;
+	
+	void add_port(CIDR_type device_cidr, port_type* other_port) noexcept;
 
-	const port_type& port() const noexcept;
+	void add_connection(CIDR_type device_cidr, CIDR_type other_cidr, Device& other) noexcept;
 
-	void send(const ip_type& dest) const noexcept;
+	void send(const ip_type& dest) noexcept;
 
-	ip_type subnet() const noexcept;
+	ip_type subnet(const port_type& port) const noexcept;
+
+	const port_type& port(std::size_t index) const;
 
 private:
 
-	bool filter_ip(const net::IP& ip) const noexcept;
+	bool filter_ip(net::Port& in_port, const net::IP& ip) const noexcept;
 
-	void use_in_packet(const net::Packet& packet) noexcept;
-
-	net::CIDR m_cidr;
+	void use_in_packet(net::Port& in_port, const net::Packet& packet) noexcept;
 
 	connections_type m_connetions;
-	port_type m_device_port;
+	typename port_type::recive_function_type m_process_in_packet;
 };
 
 }

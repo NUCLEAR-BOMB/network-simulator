@@ -1,59 +1,73 @@
 #include "Device.hpp"
 
 #include <iostream>
+#include <cstring>
 
 using namespace std::placeholders;
 
-net::Device::Device(CIDR_type cidr) noexcept
-	: m_cidr(std::move(cidr)), m_device_port(std::bind(&Device::use_in_packet, this, _1))
+net::Device::Device() noexcept
+	: m_process_in_packet(std::bind(&Device::use_in_packet, this, _1, _2))
 {}
 
-void net::Device::add_port(const port_type& other_port) noexcept
+net::Device::~Device() noexcept {}
+
+net::Device::port_type net::Device::create_port(CIDR_type device_cidr) const noexcept
 {
-	m_connetions.emplace_back(other_port);
+	return port_type(std::move(device_cidr), m_process_in_packet);
 }
 
-void net::Device::add_connection(Device& other) noexcept {
-	this->add_port(other.port());
-	other.add_port(this->port());
-}
-
-const net::Device::CIDR_type::ip_type& net::Device::ip() const noexcept {
-	return m_cidr.ip();
-}
-
-const net::Device::CIDR_type::ip_mask_type& net::Device::mask() const noexcept {
-	return m_cidr.mask();
-}
-
-const net::Device::port_type& net::Device::port() const noexcept {
-	return m_device_port;
-}
-
-void net::Device::send(const ip_type& dest) const noexcept
+void net::Device::add_port(CIDR_type device_cidr, port_type* other_port) noexcept
 {
-	net::Packet packet(this->ip(), dest);
+	m_connetions.push_back(
+		std::make_pair(
+			std::make_unique<port_type>(this->create_port(std::move(device_cidr))),
+			other_port
+		)
+	);
+}
 
-	for (const auto& conn : m_connetions) {
+void net::Device::add_connection(CIDR_type device_cidr, CIDR_type other_cidr, Device& other) noexcept
+{
+	auto* device_port = new port_type(this->create_port(device_cidr));
+	auto* other_port  = new port_type(other.create_port(other_cidr));
 
-		conn.get().send(conn.get(), packet);
+	m_connetions.push_back(std::make_pair(
+		std::unique_ptr<port_type>(device_port),
+		other_port
+	));
+
+	other.m_connetions.push_back(std::make_pair(
+		std::unique_ptr<port_type>(other_port),
+		device_port
+	));
+}
+
+void net::Device::send(const ip_type& dest) noexcept
+{
+	for (auto& conn : m_connetions) 
+	{
+		conn.first->send(*conn.second, net::Packet(conn.first->ip(), dest));
 	}
 }
 
-net::Device::ip_type net::Device::subnet() const noexcept {
-	return m_cidr.subnet();
+net::Device::ip_type net::Device::subnet(const port_type& port) const noexcept {
+	return port.cidr().subnet();
 }
 
-bool net::Device::filter_ip(const net::IP& ip) const noexcept
+const net::Device::port_type& net::Device::port(std::size_t index) const {
+	return *m_connetions.at(index).first;
+}
+
+bool net::Device::filter_ip(net::Port& in_port, const net::IP& ip) const noexcept
 {
-	if (ip != this->ip()) return true;
+	if (ip != in_port.ip()) return true;
 
 	return false;
 }
 
-void net::Device::use_in_packet(const net::Packet& packet) noexcept
+void net::Device::use_in_packet(net::Port& in_port, const net::Packet& packet) noexcept
 {
-	if (this->filter_ip(packet.dest())) return;
+	if (this->filter_ip(in_port, packet.dest())) return;
 
 	std::cout << "source: " << packet.source().to_string() << " dest: " << packet.dest().to_string() << '\n';
 }
