@@ -29,6 +29,8 @@ public:
 
 	std::string to_string() const noexcept;
 
+	operator std::string() const noexcept;
+
 	bool operator==(const IP& right) const noexcept;
 	bool operator!=(const IP& right) const noexcept;
 

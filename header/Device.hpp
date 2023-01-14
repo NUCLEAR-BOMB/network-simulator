@@ -21,6 +21,7 @@ public:
 	Device(ip_type ip) noexcept;
 
 	void add_port(const port_type& other_port) noexcept;
+	void add_connection(Device& other) noexcept;
 
 	const ip_type& ip() const noexcept;
 	const port_type& port() const noexcept;
@@ -29,7 +30,7 @@ public:
 
 private:
 
-	static void use_in_packet(const net::Packet& packet) noexcept;
+	void use_in_packet(const net::Packet& packet) noexcept;
 
 	ip_type m_ip;
 	mac_type m_mac;

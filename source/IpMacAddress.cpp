@@ -5,6 +5,8 @@
 #include <iomanip>
 #include <random>
 #include <functional>
+#include <stdexcept>
+#include <limits>
 
 net::IP::IP() noexcept 
 	: m_raw{0}
@@ -19,9 +21,14 @@ net::IP::IP(const std::string& str)
 	std::istringstream input(str);
 	std::string strnum;
 
-	for (std::size_t i = 0; std::getline(input, strnum, '.'), i < this->size(); ++i) {
-		m_raw[i] = static_cast<byte_type>(std::stoi(strnum));
+	std::size_t i = 0;
+	for (;std::getline(input, strnum, '.') && i < this->size(); ++i) {
+		const auto num = std::stoi(strnum);
+		if (num < 0 || num > std::numeric_limits<byte_type>::max()) throw std::invalid_argument("Bad input IP string");
+		m_raw[i] = static_cast<byte_type>(num);
 	}
+
+	if (i < this->size()) throw std::invalid_argument("Bad input IP string");
 }
 
 net::IP::IP(const array_type& other_arr) noexcept {
@@ -50,8 +57,14 @@ std::string net::IP::to_string() const noexcept
 	for (const auto& val : m_raw) {
 		out << std::to_string(val) << '.';
 	}
-	out.seekp(-1, std::ios_base::end);
-	return out.str();
+	std::string str = out.str();
+
+	str.pop_back();
+	return str;
+}
+
+net::IP::operator std::string() const noexcept {
+	return this->to_string();
 }
 
 bool net::IP::operator==(const IP& right) const noexcept {
