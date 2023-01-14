@@ -10,7 +10,7 @@ namespace net
 class Packet
 {
 public:
-	using ip_type = net::IpAddress;
+	using ip_type = net::IP;
 
 	Packet(ip_type source, ip_type dest) noexcept;
 

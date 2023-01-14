@@ -8,7 +8,7 @@
 namespace net
 {
 
-class IpAddress
+class IP
 {
 public:
 	using byte_type = std::uint8_t;
@@ -16,10 +16,10 @@ public:
 
 	static constexpr auto size() noexcept { return std::extent<array_type>::value; }
 
-	IpAddress() noexcept;
-	IpAddress(byte_type f1, byte_type f2, byte_type f3, byte_type f4) noexcept;
-	IpAddress(const std::string& str);
-	IpAddress(const array_type& other_arr) noexcept;
+	IP() noexcept;
+	IP(byte_type f1, byte_type f2, byte_type f3, byte_type f4) noexcept;
+	IP(const std::string& str);
+	IP(const array_type& other_arr) noexcept;
 
 	byte_type& raw(std::size_t index) noexcept;
 	const byte_type& raw(std::size_t index) const noexcept;
@@ -29,14 +29,14 @@ public:
 
 	std::string to_string() const noexcept;
 
-	bool operator==(const IpAddress& right) const noexcept;
-	bool operator!=(const IpAddress& right) const noexcept;
+	bool operator==(const IP& right) const noexcept;
+	bool operator!=(const IP& right) const noexcept;
 
 private:
 	array_type m_raw;
 };
 
-class MacAddress
+class MAC
 {
 public:
 	using byte_type = std::uint8_t;
@@ -44,10 +44,10 @@ public:
 
 	static constexpr auto size() noexcept { return std::extent<array_type>::value; }
 
-	MacAddress() noexcept;
-	MacAddress(byte_type f1, byte_type f2, byte_type f3, byte_type f4, byte_type f5, byte_type f6) noexcept;
-	MacAddress(const std::string& str);
-	MacAddress(const array_type& other_arr) noexcept;
+	MAC() noexcept;
+	MAC(byte_type f1, byte_type f2, byte_type f3, byte_type f4, byte_type f5, byte_type f6) noexcept;
+	MAC(const std::string& str);
+	MAC(const array_type& other_arr) noexcept;
 
 	byte_type& raw(std::size_t index) noexcept;
 	const byte_type& raw(std::size_t index) const noexcept;
@@ -57,10 +57,10 @@ public:
 
 	std::string to_string() const noexcept;
 
-	bool operator==(const MacAddress& right) const noexcept;
-	bool operator!=(const MacAddress& right) const noexcept;
+	bool operator==(const MAC& right) const noexcept;
+	bool operator!=(const MAC& right) const noexcept;
 
-	static MacAddress generate() noexcept;
+	static MAC generate() noexcept;
 
 private:
 	array_type m_raw;

@@ -12,8 +12,8 @@ namespace net
 class Device
 {
 public:
-	using ip_type = net::IpAddress;
-	using mac_type = net::MacAddress;
+	using ip_type = net::IP;
+	using mac_type = net::MAC;
 	using port_type = net::Port;
 
 	using connections_type = std::vector<std::reference_wrapper<const port_type>>;
