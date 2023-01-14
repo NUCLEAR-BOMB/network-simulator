@@ -48,7 +48,7 @@ std::string net::IpAddress::to_string() const noexcept
 {
 	std::stringstream out;
 	for (const auto& val : m_raw) {
-		out << val << '.';
+		out << std::to_string(val) << '.';
 	}
 	out.seekp(-1, std::ios_base::end);
 	return out.str();
