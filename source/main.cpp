@@ -6,10 +6,12 @@ int main()
 {
 	using net::IP;
 
-	net::Device d1(net::IP("192.168.1.1"));
-	net::Device d2(net::IP("192.168.1.2"));
+	net::Device d1(net::CIDR("192.168.1.1/24"));
+	net::Device d2(net::CIDR("192.168.1.2/24"));
 
 	d1.add_connection(d2);
+
+	const auto subn = d1.subnet();
 
 	//d1.send(d2.ip());
 

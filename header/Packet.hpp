@@ -1,6 +1,6 @@
 #pragma once
 
-#include "IpMacAddress.hpp"
+#include "NetworkStructures.hpp"
 
 #include <functional>
 
