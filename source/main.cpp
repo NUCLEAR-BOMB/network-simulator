@@ -11,10 +11,10 @@ int main()
 	net::Device d1;
 	net::Device d2;
 
-	d1.add_connection(
+	d1.add_connection(d2,
 		net::CIDR("192.168.1.100/24"),
-		net::CIDR("192.168.1.250/24"),
-	d2);
+		net::CIDR("192.168.1.250/24")
+	);
 
 	const auto& port0 = d1.port(0);
 	std::cout << "this ip: " << port0.ip().to_string() << " this ip mask: " << port0.mask().to_string() << '\n';
