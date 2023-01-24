@@ -1,4 +1,4 @@
-#include "Device.hpp"
+#include "DeviceTypes.hpp"
 
 #include <iostream>
 
@@ -8,8 +8,8 @@ int main()
 	using net::IPMask;
 	using net::Port;
 
-	net::Device d1;
-	net::Device d2;
+	net::Computer d1;
+	net::Computer d2;
 
 	d1.add_connection(d2,
 		net::CIDR("192.168.1.100/24"),

@@ -7,6 +7,11 @@ net::Packet::Packet(ip_type source, ip_type dest) noexcept
 	, m_header{std::move(source), std::move(dest)}
 {}
 
+net::Packet::Packet(ip_type source, ip_type dest, std::unique_ptr<Payload>&& payload) noexcept
+	: m_payload(std::move(payload))
+	, m_header{ std::move(source), std::move(dest) }
+{}
+
 const net::Packet::ip_type& net::Packet::source() const noexcept {
 	return m_header.source;
 }
@@ -29,15 +34,15 @@ net::Port::Port(CIDR_type cidr, const recive_function_type& func) noexcept
 	, m_mac(MAC_type::generate())
 {}
 
-void net::Port::send(Port& other, const Packet& packet) const noexcept
+void net::Port::send(recived_port other, const Packet& packet) noexcept
 {
 	if (m_cidr.subnet() != other.m_cidr.subnet()) return;
 
-	other.recive(packet);
+	other.recive(*this, packet);
 }
 
-void net::Port::recive(const Packet& packet) noexcept {
-	this->m_recive_func(*this, packet);
+void net::Port::recive(sended_port from, const Packet& packet) noexcept {
+	this->m_recive_func(*this, from, packet);
 }
 
 const net::Port::ip_type& net::Port::ip() const noexcept {

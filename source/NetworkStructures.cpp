@@ -7,8 +7,11 @@
 #include <functional>
 #include <stdexcept>
 #include <limits>
+#include <cstring>
 
-const net::IP BROADCAST_IP = net::IP("0.0.0.0");
+const net::IP net::BROADCAST_IP = net::IP("0.0.0.0");
+
+const net::MAC net::BROADCAST_MAC = net::MAC(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF);
 
 namespace {
 
@@ -36,8 +39,7 @@ static std::string arr4_to_string(const std::uint8_t(&raw)[4])
 	for (const auto& val : raw) {
 		out << std::to_string(val) << '.';
 	}
-	std::string str = out.str();
-
+	std::string str = std::move(out).str();
 	str.pop_back();
 	return str;
 }
@@ -89,6 +91,11 @@ bool net::IP::operator!=(const IP& right) const noexcept {
 	return !(*this == right);
 }
 
+bool net::IP::operator<(const IP& ip) const noexcept {
+	int res = std::memcmp(m_raw, ip.m_raw, size());
+	return (res < 0);
+}
+
 net::MAC::MAC() noexcept 
 	: m_raw{0}
 {}
@@ -127,14 +134,17 @@ const net::MAC::array_type& net::MAC::raw_array() const noexcept {
 	return const_cast<MAC&>(*this).raw_array();
 }
 
-std::string net::MAC::to_string() const noexcept {
+std::string net::MAC::to_string() const noexcept 
+{
 	std::stringstream out;
 
+	out << std::hex << std::uppercase;
 	for (const auto& val : m_raw) {
-		out << std::hex << val << ':';
+		out << std::setw(sizeof(byte_type) * 2) << std::setfill('0') << int(val) << '-';
 	}
-	out.seekp(-1, std::ios_base::end);
-	return out.str();
+	std::string str = std::move(out).str();
+	str.pop_back();
+	return str;
 }
 
 bool net::MAC::operator==(const MAC& right) const noexcept {
@@ -149,7 +159,8 @@ net::MAC net::MAC::generate() noexcept
 {
 	using rand_engine_type = std::independent_bits_engine<std::default_random_engine, CHAR_BIT, unsigned int>;
 
-	rand_engine_type rand_engine;
+	std::random_device rd;
+	rand_engine_type rand_engine(rd());
 
 	MAC v;
 

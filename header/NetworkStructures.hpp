@@ -32,6 +32,8 @@ public:
 	bool operator==(const IP& right) const noexcept;
 	bool operator!=(const IP& right) const noexcept;
 
+	bool operator<(const IP& ip) const noexcept;
+
 private:
 	array_type m_raw;
 };
@@ -67,6 +69,8 @@ public:
 private:
 	array_type m_raw;
 };
+
+extern const net::MAC BROADCAST_MAC;
 
 class IPMask
 {

@@ -6,6 +6,7 @@
 #include <utility>
 #include <functional>
 #include <memory>
+#include <map>
 
 namespace net
 {
@@ -38,12 +39,28 @@ public:
 
 	const port_type& port(std::size_t index) const;
 
+protected:
+
+	void arp_request(const ip_type& dest) noexcept;
+
+	virtual void process_packet(const net::Port& in_port, const net::Packet& packet);
+
+	void iterate_connections(std::function<void(port_type&, port_type&)>&& func);
 private:
 
-	virtual void process_packet(net::Port& in_port, const net::Packet& packet);
+	void pre_process_packet(typename port_type::recived_port toport, 
+							typename port_type::sended_port fromport, const net::Packet& packet);
 
 	connections_type m_connetions;
 	typename port_type::recive_function_type m_process_in_packet;
+
+	struct arptable_mapped_t {
+		net::Port& to;
+		net::Port& from;
+		const net::MAC& mac;
+	};
+
+	std::map<net::IP, arptable_mapped_t> m_arptable;
 };
 
 }

@@ -22,11 +22,7 @@ public:
 
 	Packet(ip_type source, ip_type dest) noexcept;
 
-	template<class Derived>
-	Packet(ip_type source, ip_type dest, Derived&& payload) noexcept
-		: Packet(std::move(source), std::move(dest)) {
-		m_payload = std::make_shared<Derived>(std::forward<Derived>(payload));
-	}
+	Packet(ip_type source, ip_type dest, std::unique_ptr<Payload>&& payload) noexcept;
 
 	const ip_type& source() const noexcept;
 	const ip_type& dest() const noexcept;
@@ -43,13 +39,17 @@ public:
 private:
 	header_type m_header;
 
-	std::shared_ptr<Payload> m_payload;
+	std::unique_ptr<Payload> m_payload;
 };
 
 class Port
 {
 public:
-	using recive_function_type = std::function<void(Port&, const Packet&)>;
+
+	using recived_port = Port&;
+	using sended_port = Port&;
+
+	using recive_function_type = std::function<void(recived_port, sended_port, const Packet&)>;
 
 	using CIDR_type = net::CIDR;
 	using MAC_type = net::MAC;
@@ -59,8 +59,8 @@ public:
 
 	Port(CIDR_type cidr, const recive_function_type& func) noexcept;
 
-	void send(Port& other, const Packet& packet) const noexcept;
-	void recive(const Packet& packet) noexcept;
+	void send(recived_port other, const Packet& packet) noexcept;
+	void recive(sended_port from, const Packet& packet) noexcept;
 
 	const ip_type& ip() const noexcept;
 	const ip_mask_type& mask() const noexcept;

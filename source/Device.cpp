@@ -3,11 +3,12 @@
 #include <iostream>
 #include <cstring>
 #include <stdexcept>
+#include <algorithm>
 
 using namespace std::placeholders;
 
 net::Device::Device() noexcept
-	: m_process_in_packet(std::bind(&Device::process_packet, this, _1, _2))
+	: m_process_in_packet(std::bind(&Device::pre_process_packet, this, _1, _2, _3))
 {}
 
 net::Device::~Device() noexcept {}
@@ -45,20 +46,32 @@ void net::Device::add_connection(Device& other, CIDR_type device_cidr, CIDR_type
 
 void net::Device::send(const ip_type& dest)
 {
-	for (auto conn = m_connetions.begin(); conn != m_connetions.end();) 
+	auto res = m_arptable.find(dest);
+	if (res != m_arptable.end()) 
 	{
-		if (std::shared_ptr<port_type> conn_second = conn->second.lock()) {
-			conn->first->send(*conn_second, 
-				net::Packet(
-					conn->first->ip(), dest, 
-					net::TCP(1234, conn->first->mac())
-				)
-			);
-		} else {
-			conn = m_connetions.erase(conn); continue;
-		}
-		++conn;
+		res->second.to.send(res->second.from, net::Packet(res->second.to.ip(), dest,
+			std::make_unique<net::TCP>(12345, 54321, res->second.mac)
+		));
 	}
+	else {
+		this->arp_request(dest);
+
+		this->send(dest);
+	}
+}
+
+
+void net::Device::arp_request(const ip_type& dest) noexcept
+{
+	this->iterate_connections([&](port_type& device_port, port_type& other_port) 
+	{
+		device_port.send(other_port, net::Packet(device_port.ip(), dest,
+			std::make_unique<net::ARP>(
+				net::ARP::Operation::Request,
+				device_port.mac(), net::BROADCAST_MAC
+			)
+		));
+	});
 }
 
 net::Device::ip_type net::Device::subnet(const port_type& port) const noexcept {
@@ -70,15 +83,53 @@ const net::Device::port_type& net::Device::port(std::size_t index) const {
 }
 
 
-void net::Device::process_packet(net::Port& in_port, const net::Packet& packet)
+void net::Device::process_packet(const net::Port&, const net::Packet& packet)
 {
 	const auto* tcp_payload = dynamic_cast<const TCP*>(packet.payload());
 	if (tcp_payload == nullptr) throw std::runtime_error("Wrong packet payload type");
 
-	if (packet.dest() != in_port.ip()) return;
-
 	std::cout 
 		<< "source: " << packet.source().to_string()
 		<< "\tdest: " << packet.dest().to_string()
-		<< "\tport: " << tcp_payload->port() << '\n';
+		<< "\tport: " << tcp_payload->dest_port() << '\n';
+}
+
+void net::Device::iterate_connections(std::function<void(port_type&, port_type&)>&& func)
+{
+	for (auto conn = m_connetions.begin(); conn != m_connetions.end();)
+	{
+		if (std::shared_ptr<port_type> conn_second = conn->second.lock()) {
+			func(*(conn->first), *(conn_second));
+		}
+		else {
+			conn = m_connetions.erase(conn); continue;
+		}
+		++conn;
+	}
+}
+
+void net::Device::pre_process_packet(typename port_type::recived_port toport, typename port_type::sended_port fromport, const net::Packet& packet)
+{
+	if (packet.dest() != toport.ip()) return;
+
+	const auto* arp_payload = dynamic_cast<const ARP*>(packet.payload());
+	if (arp_payload != nullptr) 
+	{
+		if (arp_payload->operation_code() == net::ARP::Operation::Request) 
+		{
+			toport.send(fromport, net::Packet(toport.ip(), packet.source(), 
+				std::make_unique<net::ARP>(
+					net::ARP::Operation::Reply, toport.mac(), arp_payload->source_mac()
+				)
+			));
+		} else
+		if (arp_payload->operation_code() == net::ARP::Operation::Reply)
+		{
+			m_arptable.emplace(packet.source(), arptable_mapped_t{toport, fromport, arp_payload->source_mac()});
+		}
+
+		return;
+	}
+
+	this->process_packet(toport, packet);
 }
