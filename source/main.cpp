@@ -11,9 +11,15 @@ int main()
 	net::Computer d1;
 	net::Computer d2;
 
-	d1.add_connection(d2,
+	net::Switch sw;
+
+	d1.add_connection(sw,
 		net::CIDR("192.168.1.100/24"),
-		net::CIDR("192.168.1.250/24")
+		net::CIDR("192.168.1.2/24")
+	);
+	d2.add_connection(sw,
+		net::CIDR("192.168.1.200/24"),
+		net::CIDR("192.168.1.3/24")
 	);
 
 	const auto& port0 = d1.port(0);

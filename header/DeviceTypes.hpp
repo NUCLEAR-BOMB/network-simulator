@@ -7,12 +7,24 @@ namespace net
 
 class Computer : public net::Device
 {
-public:
+protected:
 
-	virtual void process_packet(const net::Port& in_port, const net::Packet& packet) override;
+	virtual void process_packet(wire_type wire, const net::Packet& packet) override;
 
 private:
 
 };
+
+class Switch : public net::Device
+{
+protected:
+
+	void resend(wire_type wire, const net::Packet& packet);
+
+	virtual void process_packet(wire_type wire, const net::Packet& packet) override;
+
+};
+
+
 
 }
