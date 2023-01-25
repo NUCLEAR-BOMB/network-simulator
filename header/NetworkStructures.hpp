@@ -117,7 +117,7 @@ public:
 	using ip_type = IP;
 	using ip_mask_type = IPMask;
 	  
-	CIDR(ip_type ip, ip_mask_type ipmask) noexcept;
+	CIDR(ip_type ip, ip_mask_type ipmask = IPMask(0xFF, 0xFF, 0xFF, 0x00)) noexcept;
 	CIDR(const std::string& str);
 
 	ip_type& ip() noexcept;

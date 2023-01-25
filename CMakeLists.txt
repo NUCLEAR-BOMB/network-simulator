@@ -19,3 +19,7 @@ target_compile_options(${PROJECT_NAME} PUBLIC
 		-Wall -Wextra -pedantic -Werror
 	>
 )
+
+if (MSVC_IDE)
+	target_sources(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/Visualizations.natvis>)
+endif()

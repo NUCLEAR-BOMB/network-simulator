@@ -48,6 +48,8 @@ protected:
 
 	void arp_request(const ip_type& dest) noexcept;
 
+	void send_payload(const net::IP& dest, wire_type wire, std::unique_ptr<net::Packet::Payload>&& payload) noexcept;
+
 	virtual void process_packet(wire_type wire, const net::Packet& packet);
 
 	void iterate_connections(std::function<void(wire_type)>&& func);

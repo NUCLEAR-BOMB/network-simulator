@@ -10,16 +10,21 @@ int main()
 
 	net::Computer d1;
 	net::Computer d2;
+	net::Computer d3;
 
 	net::Switch sw;
 
 	d1.add_connection(sw,
-		net::CIDR("192.168.1.100/24"),
-		net::CIDR("192.168.1.2/24")
+		{"192.168.1.100"},
+		{"192.168.1.2"}
 	);
 	d2.add_connection(sw,
-		net::CIDR("192.168.1.200/24"),
-		net::CIDR("192.168.1.3/24")
+		{"192.168.1.101"},
+		{"192.168.1.3"}
+	);
+	d3.add_connection(sw,
+		{"192.168.1.102"},
+		{"192.168.1.4"}
 	);
 
 	const auto& port0 = d1.port(0);
@@ -28,6 +33,6 @@ int main()
 	std::string dest_ip;
 	while (std::cin >> dest_ip)
 	{
-		d1.send(IP(dest_ip));
+		d1.send({ dest_ip });
 	}
 }

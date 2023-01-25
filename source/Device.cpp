@@ -35,15 +35,8 @@ void net::Device::add_connection(Device& other, CIDR_type device_cidr, CIDR_type
 	auto device_port = std::make_shared<port_type>(this->create_port(device_cidr));
 	auto other_port  = std::make_shared<port_type>(other.create_port(other_cidr));
 
-	m_connetions.push_back(std::make_pair(
-		device_port,
-		other_port
-	));
-
-	other.m_connetions.push_back(std::make_pair(
-		other_port,
-		device_port
-	));
+	m_connetions.emplace_back(device_port, other_port);
+	other.m_connetions.emplace_back(other_port, device_port);
 }
 
 void net::Device::send(const ip_type& dest)
@@ -51,8 +44,8 @@ void net::Device::send(const ip_type& dest)
 	auto res = m_arptable.find(dest);
 	if (res != m_arptable.end()) 
 	{
-		res->second.to.send(res->second.from, net::Packet(res->second.to.ip(), dest,
-			std::make_unique<net::TCP>(12345, 54321, res->second.mac)
+		this->send_payload(dest, {res->second.to, res->second.from}, std::make_unique<net::TCP>(
+			12345, 54321, res->second.mac
 		));
 	}
 	else {
@@ -69,13 +62,16 @@ void net::Device::arp_request(const ip_type& dest) noexcept
 {
 	this->iterate_connections([&](wire_type wire) 
 	{
-		wire.to.send(wire.from, net::Packet(wire.to.ip(), dest,
-			std::make_unique<net::ARP>(
-				net::ARP::Operation::Request,
-				wire.to.mac(), net::BROADCAST_MAC
-			)
+		this->send_payload(dest, wire, std::make_unique<net::ARP>(
+			net::ARP::Operation::Request,
+			wire.to.mac(), net::BROADCAST_MAC
 		));
 	});
+}
+
+void net::Device::send_payload(const net::IP& dest, wire_type wire, std::unique_ptr<net::Packet::Payload>&& payload) noexcept
+{
+	wire.to.send(wire.from, net::Packet(wire.to.ip(), dest, std::move(payload)));
 }
 
 net::Device::ip_type net::Device::subnet(const port_type& port) const noexcept {
@@ -117,14 +113,13 @@ void net::Device::iterate_connections(std::function<void(wire_type)>&& func)
 void net::Device::pre_process_packet(wire_type wire, const net::Packet& packet)
 {
 	const auto* arp_payload = dynamic_cast<const ARP*>(packet.payload());
+
 	if (arp_payload != nullptr && (wire.to.ip() == packet.dest()))
 	{
 		if (arp_payload->operation_code() == net::ARP::Operation::Request) 
 		{
-			wire.to.send(wire.from, net::Packet(wire.to.ip(), packet.source(),
-				std::make_unique<net::ARP>(
-					net::ARP::Operation::Reply, wire.to.mac(), arp_payload->source_mac()
-				)
+			this->send_payload(packet.source(), wire, std::make_unique<net::ARP>(
+				net::ARP::Operation::Reply, wire.to.mac(), arp_payload->source_mac()
 			));
 		} else
 		if (arp_payload->operation_code() == net::ARP::Operation::Reply)

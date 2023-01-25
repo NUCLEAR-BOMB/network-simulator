@@ -281,6 +281,10 @@ net::CIDR::CIDR(const std::string& str)
 	const auto ip_str = str.substr(0, slash_pos);
 	m_ip = net::IP(ip_str);
 
+	if (slash_pos == str.npos) {
+		m_mask = net::IPMask(0xFF, 0xFF, 0xFF, 0x00); return;
+	}
+
 	const auto mask_str = str.substr(slash_pos + 1);
 	m_mask = net::IPMask(static_cast<net::IPMask::size_type>(std::stoi(mask_str)));
 
