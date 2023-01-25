@@ -18,11 +18,15 @@ public:
 
 	struct Payload {
 		virtual ~Payload() {};
+		virtual std::unique_ptr<Payload> clone() const = 0;
 	};
 
 	Packet(ip_type source, ip_type dest) noexcept;
 
 	Packet(ip_type source, ip_type dest, std::unique_ptr<Payload>&& payload) noexcept;
+
+	Packet(const Packet& other) noexcept;
+	Packet(Packet&&) noexcept = default;
 
 	const ip_type& source() const noexcept;
 	const ip_type& dest() const noexcept;
@@ -49,7 +53,7 @@ public:
 	using recived_port = Port&;
 	using sended_port = Port&;
 
-	using recive_function_type = std::function<void(recived_port, sended_port, const Packet&)>;
+	using recive_function_type = std::function<void(recived_port, sended_port, Packet)>;
 
 	using CIDR_type = net::CIDR;
 	using MAC_type = net::MAC;
@@ -59,8 +63,8 @@ public:
 
 	Port(CIDR_type cidr, const recive_function_type& func) noexcept;
 
-	void send(recived_port other, const Packet& packet) noexcept;
-	void recive(sended_port from, const Packet& packet) noexcept;
+	void send(recived_port other, Packet packet) noexcept;
+	void recive(sended_port from, Packet packet) noexcept;
 
 	const ip_type& ip() const noexcept;
 	const ip_mask_type& mask() const noexcept;

@@ -41,22 +41,22 @@ protected:
 
 	void arp_request(const net::IP& dest) noexcept;
 
-	void send_payload(const net::IP& dest, wire_type wire, std::unique_ptr<net::Packet::Payload>&& payload) noexcept;
+	void send_payload(const net::IP& dest, wire_type wire, std::unique_ptr<net::Packet::Payload>&& payload) const noexcept;
 
-	virtual void process_packet(wire_type wire, const net::Packet& packet);
+	virtual void process_packet(wire_type wire, net::Packet packet);
 
 	void iterate_connections(std::function<void(wire_type)>&& func);
 
 	struct arptable_mapped_t {
 		net::Port& to;
 		net::Port& from;
-		const net::MAC& mac;
+		const net::MAC mac;
 	};
 
 	std::map<net::IP, arptable_mapped_t> m_arptable;
 private:
 
-	void pre_process_packet(wire_type wire, const net::Packet& packet);
+	void pre_process_packet(wire_type wire, net::Packet packet);
 
 	connections_type m_connetions;
 	typename net::Port::recive_function_type m_process_in_packet;

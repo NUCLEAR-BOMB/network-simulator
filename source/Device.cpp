@@ -8,8 +8,8 @@
 using namespace std::placeholders;
 
 net::Device::Device() noexcept
-	: m_process_in_packet([&](net::Port& in, net::Port& from, const net::Packet& pack) {
-		this->pre_process_packet(wire_type{in, from}, pack);
+	: m_process_in_packet([&](net::Port& in, net::Port& from, net::Packet pack) {
+		this->pre_process_packet(wire_type{in, from}, std::move(pack));
 	})
 {}
 
@@ -69,7 +69,7 @@ void net::Device::arp_request(const net::IP& dest) noexcept
 	});
 }
 
-void net::Device::send_payload(const net::IP& dest, wire_type wire, std::unique_ptr<net::Packet::Payload>&& payload) noexcept
+void net::Device::send_payload(const net::IP& dest, wire_type wire, std::unique_ptr<net::Packet::Payload>&& payload) const noexcept
 {
 	wire.to.send(wire.from, net::Packet(wire.to.ip(), dest, std::move(payload)));
 }
@@ -83,7 +83,7 @@ const net::Port& net::Device::port(std::size_t index) const {
 }
 
 
-void net::Device::process_packet(wire_type wire, const net::Packet& packet)
+void net::Device::process_packet(wire_type wire, net::Packet packet)
 {
 	if (wire.to.ip() != packet.dest()) return;
 
@@ -101,7 +101,7 @@ void net::Device::iterate_connections(std::function<void(wire_type)>&& func)
 	for (auto conn = m_connetions.begin(); conn != m_connetions.end();)
 	{
 		if (std::shared_ptr<net::Port> conn_second = conn->second.lock()) {
-			func(wire_type{*(conn->first), *(conn_second)});
+			func({*(conn->first), *(conn_second)});
 		}
 		else {
 			conn = m_connetions.erase(conn); continue;
@@ -110,7 +110,7 @@ void net::Device::iterate_connections(std::function<void(wire_type)>&& func)
 	}
 }
 
-void net::Device::pre_process_packet(wire_type wire, const net::Packet& packet)
+void net::Device::pre_process_packet(wire_type wire, net::Packet packet)
 {
 	const auto* arp_payload = dynamic_cast<const ARP*>(packet.payload());
 
@@ -128,5 +128,5 @@ void net::Device::pre_process_packet(wire_type wire, const net::Packet& packet)
 		}
 	}
 
-	this->process_packet(wire, packet);
+	this->process_packet(wire, std::move(packet));
 }

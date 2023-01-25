@@ -4,7 +4,7 @@
 #include <iostream>
 #include <typeinfo>
 
-void net::Computer::process_packet(wire_type wire, const net::Packet& packet)
+void net::Computer::process_packet(wire_type wire, net::Packet packet)
 {
 	if (wire.to.ip() != packet.dest()) return;
 
@@ -20,12 +20,12 @@ void net::Computer::process_packet(wire_type wire, const net::Packet& packet)
 }
 
 
-void net::Switch::resend(wire_type wire, const net::Packet& packet)
+void net::Switch::resend(wire_type wire, net::Packet packet) const
 {
-	wire.to.send(wire.from, packet);
+	wire.to.send(wire.from, std::move(packet));
 }
 
-void net::Switch::process_packet(wire_type wire, const net::Packet& packet)
+void net::Switch::process_packet(wire_type wire, net::Packet packet)
 {
 	const auto* arp_payload = dynamic_cast<const net::ARP*>(packet.payload());
 
@@ -35,8 +35,8 @@ void net::Switch::process_packet(wire_type wire, const net::Packet& packet)
 
 		if (arp_payload->operation_code() == net::ARP::Operation::Request) 
 		{
-			this->iterate_connections([&](wire_type connection_wire) {
-				this->resend(connection_wire, packet);
+			this->iterate_connections([=](wire_type connection_wire) {
+				this->resend(connection_wire, std::move(packet));
 			});
 			return;
 		}
@@ -45,7 +45,7 @@ void net::Switch::process_packet(wire_type wire, const net::Packet& packet)
 	auto find_res = m_arptable.find(packet.dest());
 	if (find_res != m_arptable.end()) 
 	{
-		this->resend({find_res->second.to, find_res->second.from}, packet);
+		this->resend({find_res->second.to, find_res->second.from}, std::move(packet));
 	}
 	else {
 		throw std::runtime_error("Unknown device");

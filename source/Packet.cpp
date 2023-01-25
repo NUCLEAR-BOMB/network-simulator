@@ -1,5 +1,7 @@
 #include "Packet.hpp"
 
+#include "PacketPayloads.hpp"
+
 #include <utility>
 
 net::Packet::Packet(ip_type source, ip_type dest) noexcept
@@ -10,6 +12,11 @@ net::Packet::Packet(ip_type source, ip_type dest) noexcept
 net::Packet::Packet(ip_type source, ip_type dest, std::unique_ptr<Payload>&& payload) noexcept
 	: m_header{ std::move(source), std::move(dest) }
 	, m_payload(std::move(payload))
+{}
+
+net::Packet::Packet(const Packet& other) noexcept
+	: m_header(other.m_header)
+	, m_payload(other.m_payload->clone())
 {}
 
 const net::Packet::ip_type& net::Packet::source() const noexcept {
@@ -34,15 +41,20 @@ net::Port::Port(CIDR_type cidr, const recive_function_type& func) noexcept
 	, m_mac(MAC_type::generate())
 {}
 
-void net::Port::send(recived_port other, const Packet& packet) noexcept
+void net::Port::send(recived_port other, Packet packet) noexcept
 {
 	if (m_cidr.subnet() != other.m_cidr.subnet()) return;
 
-	other.recive(*this, packet);
+	auto* tcp_packet = dynamic_cast<net::TCP*>(packet.payload());
+	if (tcp_packet != nullptr) { tcp_packet->get_mac() = this->m_mac; }
+	auto* arp_payload = dynamic_cast<net::ARP*>(packet.payload());
+	if (arp_payload != nullptr) { arp_payload->get_source_mac() = this->m_mac; }
+
+	other.recive(*this, std::move(packet));
 }
 
-void net::Port::recive(sended_port from, const Packet& packet) noexcept {
-	this->m_recive_func(*this, from, packet);
+void net::Port::recive(sended_port from, Packet packet) noexcept {
+	this->m_recive_func(*this, from, std::move(packet));
 }
 
 const net::Port::ip_type& net::Port::ip() const noexcept {
