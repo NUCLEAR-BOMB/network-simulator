@@ -3,13 +3,13 @@
 #include <utility>
 
 net::Packet::Packet(ip_type source, ip_type dest) noexcept
-	: m_payload(nullptr)
-	, m_header{std::move(source), std::move(dest)}
+	: m_header{std::move(source), std::move(dest)}
+	, m_payload(nullptr)
 {}
 
 net::Packet::Packet(ip_type source, ip_type dest, std::unique_ptr<Payload>&& payload) noexcept
-	: m_payload(std::move(payload))
-	, m_header{ std::move(source), std::move(dest) }
+	: m_header{ std::move(source), std::move(dest) }
+	, m_payload(std::move(payload))
 {}
 
 const net::Packet::ip_type& net::Packet::source() const noexcept {
@@ -29,8 +29,8 @@ const net::Packet::Payload* net::Packet::payload() const noexcept {
 }
 
 net::Port::Port(CIDR_type cidr, const recive_function_type& func) noexcept
-	: m_cidr(std::move(cidr))
-	, m_recive_func(func) 
+	: m_recive_func(func) 
+	, m_cidr(std::move(cidr))
 	, m_mac(MAC_type::generate())
 {}
 
