@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+	<Type Name="net::IP">
+		<DisplayString>{m_raw[0],nvod}.{m_raw[1],nvod}.{m_raw[2],nvod}.{m_raw[3],nvod}</DisplayString>
+	</Type>
+
+	<Type Name="net::IPMask">
+		<DisplayString>{m_raw[0],nvod}.{m_raw[1],nvod}.{m_raw[2],nvod}.{m_raw[3],nvod}</DisplayString>
+	</Type>
+
+	<Type Name="net::MAC">
+		<DisplayString>{m_raw[0],nvoXb}-{m_raw[1],nvoXb}-{m_raw[2],nvoXb}-{m_raw[3],nvoXb}-{m_raw[4],nvoXb}-{m_raw[5],nvoXb}</DisplayString>
+	</Type>
+	
+	<Type Name="net::CIDR">
+		<Expand>
+			<Item Name="[ip]">m_ip</Item>
+			<Item Name="[mask]">m_mask</Item>
+		</Expand>
+	</Type>
+	
+</AutoVisualizer>
