@@ -14,30 +14,23 @@ namespace net
 class Device
 {
 public:
-	using CIDR_type = net::CIDR;
-
-	using ip_type = typename CIDR::ip_type;
-	using ip_mask_type = typename CIDR::ip_mask_type;
-
-	using port_type = net::Port;
-
-	using connections_type = std::vector<std::pair<std::shared_ptr<port_type>, std::weak_ptr<port_type>>>;
+	using connections_type = std::vector<std::pair<std::shared_ptr<net::Port>, std::weak_ptr<net::Port>>>;
 
 	Device() noexcept;
 
 	virtual ~Device() noexcept;
 
-	port_type create_port(CIDR_type device_cidr) const noexcept;
+	net::Port create_port(net::CIDR device_cidr) const noexcept;
 	
-	void add_port(CIDR_type device_cidr, std::weak_ptr<port_type> other_port) noexcept;
+	void add_port(net::CIDR device_cidr, std::weak_ptr<net::Port> other_port) noexcept;
 
-	void add_connection(Device& other, CIDR_type device_cidr, CIDR_type other_cidr) noexcept;
+	void add_connection(Device& other, net::CIDR device_cidr, net::CIDR other_cidr) noexcept;
 
-	void send(const ip_type& dest);
+	void send(const net::IP& dest);
 
-	ip_type subnet(const port_type& port) const noexcept;
+	net::IP subnet(const net::Port& port) const noexcept;
 
-	const port_type& port(std::size_t index) const;
+	const net::Port& port(std::size_t index) const;
 
 protected:
 
@@ -46,7 +39,7 @@ protected:
 		net::Port& from;
 	};
 
-	void arp_request(const ip_type& dest) noexcept;
+	void arp_request(const net::IP& dest) noexcept;
 
 	void send_payload(const net::IP& dest, wire_type wire, std::unique_ptr<net::Packet::Payload>&& payload) noexcept;
 
@@ -66,7 +59,7 @@ private:
 	void pre_process_packet(wire_type wire, const net::Packet& packet);
 
 	connections_type m_connetions;
-	typename port_type::recive_function_type m_process_in_packet;
+	typename net::Port::recive_function_type m_process_in_packet;
 };
 
 }
