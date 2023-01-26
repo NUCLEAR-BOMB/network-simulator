@@ -41,7 +41,7 @@ protected:
 
 	void arp_request(const net::IP& dest) noexcept;
 
-	void send_payload(const net::IP& dest, wire_type wire, std::unique_ptr<net::Packet::Payload>&& payload) const noexcept;
+	void send_payload(const net::MAC& dest, const net::IP& ip_dest, wire_type wire, std::unique_ptr<net::Packet::Payload>&& payload) noexcept;
 
 	virtual void process_packet(wire_type wire, net::Packet packet);
 

@@ -14,34 +14,43 @@ class Packet
 {
 public:
 	using byte_type = std::uint8_t;
-	using ip_type = net::IP;
 
 	struct Payload {
 		virtual ~Payload() {};
 		virtual std::unique_ptr<Payload> clone() const = 0;
 	};
 
-	Packet(ip_type source, ip_type dest) noexcept;
+	Packet(const net::MAC& source, const net::MAC& dest, const net::IP& ip_source, const net::IP& ip_dest) noexcept;
 
-	Packet(ip_type source, ip_type dest, std::unique_ptr<Payload>&& payload) noexcept;
+	Packet(const net::MAC& source, const net::MAC& dest, const net::IP& ip_source, const net::IP& ip_dest, std::unique_ptr<Payload>&& payload) noexcept;
 
 	Packet(const Packet& other) noexcept;
 	Packet(Packet&&) noexcept = default;
 
-	const ip_type& source() const noexcept;
-	const ip_type& dest() const noexcept;
+	const net::MAC& mac_source() const noexcept;
+	const net::MAC& mac_dest() const noexcept;
+
+	const net::IP& ip_source() const noexcept;
+	const net::IP& ip_dest() const noexcept;
 
 	Payload* payload() noexcept;
 	const Payload* payload() const noexcept;
 
-	struct header_type 
+	struct IP_header 
 	{
-		ip_type source;
-		ip_type dest;
+		net::IP source;
+		net::IP dest;
+	};
+
+	struct MAC_header 
+	{
+		net::MAC source;
+		net::MAC dest;
 	};
 
 private:
-	header_type m_header;
+	MAC_header m_header;
+	IP_header m_ip_header;
 
 	std::unique_ptr<Payload> m_payload;
 };

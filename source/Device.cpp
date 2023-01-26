@@ -48,8 +48,8 @@ void net::Device::send(const net::IP& dest)
 	if (res != m_arptable.end()) 
 	{
 		LOG("%s | Sending packet...", res->second.to.ip().to_string().c_str());
-		this->send_payload(dest, {res->second.to, res->second.from}, std::make_unique<net::TCP>(
-			12345, 54321, res->second.mac
+		this->send_payload(res->second.mac, dest, {res->second.to, res->second.from}, std::make_unique<net::TCP>(
+			12345, 54321
 		));
 	}
 	else {
@@ -58,7 +58,7 @@ void net::Device::send(const net::IP& dest)
 		
 		if (m_arptable.find(dest) == m_arptable.end()) return;
 
-		LOG("Mac address requested. Trying to send a package again");
+		LOG("Mac address requested. Trying to send package again");
 		this->send(dest);
 	}
 }
@@ -66,19 +66,21 @@ void net::Device::send(const net::IP& dest)
 
 void net::Device::arp_request(const net::IP& dest) noexcept
 {
-	LOG("Sending ARP request...");
+	LOG("Sending ARP request to %s ...", dest.to_string().c_str());
 	this->iterate_connections([&](wire_type wire) 
 	{
-		this->send_payload(dest, wire, std::make_unique<net::ARP>(
+		this->send_payload(net::BROADCAST_MAC, dest, wire, std::make_unique<net::ARP>(
 			net::ARP::Operation::Request,
 			wire.to.mac(), net::BROADCAST_MAC
 		));
 	});
 }
 
-void net::Device::send_payload(const net::IP& dest, wire_type wire, std::unique_ptr<net::Packet::Payload>&& payload) const noexcept
+void net::Device::send_payload(const net::MAC& dest, const net::IP& ip_dest, wire_type wire, std::unique_ptr<net::Packet::Payload>&& payload) noexcept
 {
-	wire.to.send(wire.from, net::Packet(wire.to.ip(), dest, std::move(payload)));
+	wire.to.send(wire.from,
+		net::Packet(wire.to.mac(), dest, wire.to.ip(), ip_dest, std::move(payload))
+	);
 }
 
 net::IP net::Device::subnet(const net::Port& port) const noexcept {
@@ -92,14 +94,14 @@ const net::Port& net::Device::port(std::size_t index) const {
 
 void net::Device::process_packet(wire_type wire, net::Packet packet)
 {
-	if (wire.to.ip() != packet.dest()) return;
+	if (wire.to.ip() != packet.ip_dest()) return;
 
 	const auto* tcp_payload = dynamic_cast<const TCP*>(packet.payload());
 	if (tcp_payload == nullptr) throw std::runtime_error("Wrong packet payload type");
 
 	std::cout 
-		<< "source: " << packet.source().to_string()
-		<< "\tdest: " << packet.dest().to_string()
+		<< "source: " << packet.ip_source().to_string()
+		<< "\tdest: " << packet.ip_dest().to_string()
 		<< "\tport: " << tcp_payload->dest_port() << '\n';
 }
 
@@ -119,23 +121,23 @@ void net::Device::iterate_connections(std::function<void(wire_type)>&& func)
 
 void net::Device::pre_process_packet(wire_type wire, net::Packet packet)
 {
-	LOG("%s | Processing packet from %s ...", wire.to.ip().to_string().c_str(), packet.source().to_string().c_str());
+	LOG("%s | Processing packet from %s ...", wire.to.ip().to_string().c_str(), packet.ip_source().to_string().c_str());
 	const auto* arp_payload = dynamic_cast<const ARP*>(packet.payload());
 
-	if (arp_payload != nullptr && (wire.to.ip() == packet.dest()))
+	if (arp_payload != nullptr && (wire.to.ip() == packet.ip_dest()))
 	{
 		if (arp_payload->operation_code() == net::ARP::Operation::Request) 
 		{
-			LOG("%s | Sending an ARP reply packet to %s ...", wire.to.ip().to_string().c_str(), packet.source().to_string().c_str());
+			LOG("%s | Sending an ARP reply packet to %s ...", wire.to.ip().to_string().c_str(), packet.ip_source().to_string().c_str());
 
-			this->send_payload(packet.source(), wire, std::make_unique<net::ARP>(
+			this->send_payload(packet.mac_source(), packet.ip_source(), wire, std::make_unique<net::ARP>(
 				net::ARP::Operation::Reply, wire.to.mac(), arp_payload->source_mac()
 			));
 		} else
 		if (arp_payload->operation_code() == net::ARP::Operation::Reply)
 		{
-			LOG("%s | Adding MAC address to ARP table from %s ...", wire.to.ip().to_string().c_str(), packet.source().to_string().c_str());
-			m_arptable.emplace(packet.source(), arptable_mapped_t{ wire.to, wire.from, arp_payload->source_mac()});
+			LOG("%s | Adding MAC address to ARP table: IP %s ...", wire.to.ip().to_string().c_str(), packet.ip_source().to_string().c_str());
+			m_arptable.emplace(packet.ip_source(), arptable_mapped_t{ wire.to, wire.from, arp_payload->source_mac()});
 		}
 	}
 
