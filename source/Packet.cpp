@@ -54,7 +54,7 @@ net::Port::Port(CIDR_type cidr, const recive_function_type& func) noexcept
 
 void net::Port::send(recived_port other, Packet packet) noexcept
 {
-	if (m_cidr.subnet() != other.m_cidr.subnet()) return;
+	//if (m_cidr.subnet() != other.m_cidr.subnet()) return;
 
 	other.recive(*this, std::move(packet));
 }

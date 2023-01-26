@@ -10,7 +10,7 @@ using namespace std::placeholders;
 
 net::Device::Device() noexcept
 	: m_process_in_packet([&](net::Port& in, net::Port& from, net::Packet pack) {
-		this->pre_process_packet(wire_type{in, from}, std::move(pack));
+		this->preprocess_packet(wire_type{in, from}, std::move(pack));
 	})
 {}
 
@@ -42,45 +42,56 @@ void net::Device::add_connection(Device& other, net::CIDR device_cidr, net::CIDR
 
 void net::Device::send(const net::IP& dest)
 {
-	LOG("Trying send a packet to %s ...", dest.to_string().c_str());
-
-	auto res = m_arptable.find(dest);
-	if (res != m_arptable.end()) 
-	{
-		LOG("%s | Sending packet...", res->second.to.ip().to_string().c_str());
-		this->send_payload(res->second.mac, dest, {res->second.to, res->second.from}, std::make_unique<net::TCP>(
-			12345, 54321
-		));
-	}
-	else {
-		LOG("No mac address exists in the arp table. Requesting the mac address...");
-		this->arp_request(dest);
-		
-		if (m_arptable.find(dest) == m_arptable.end()) return;
-
-		LOG("Mac address requested. Trying to send package again");
-		this->send(dest);
-	}
+	this->send_payload(dest, std::make_unique<net::TCP>(
+		12345, 54321
+	));
 }
 
 
 void net::Device::arp_request(const net::IP& dest) noexcept
 {
-	LOG("Sending ARP request to %s ...", dest.to_string().c_str());
+	LOG("Sending ARP request to %s", dest.to_string().c_str());
 	this->iterate_connections([&](wire_type wire) 
 	{
-		this->send_payload(net::BROADCAST_MAC, dest, wire, std::make_unique<net::ARP>(
+		this->send_payload_to_wire(net::BROADCAST_MAC, dest, wire, std::make_unique<net::ARP>(
 			net::ARP::Operation::Request,
 			wire.to.mac(), net::BROADCAST_MAC
 		));
 	});
 }
 
-void net::Device::send_payload(const net::MAC& dest, const net::IP& ip_dest, wire_type wire, std::unique_ptr<net::Packet::Payload>&& payload) noexcept
+void net::Device::send_payload_to_wire(const net::MAC& dest, const net::IP& ip_dest, wire_type wire, std::unique_ptr<net::Packet::Payload>&& payload) noexcept
 {
 	wire.to.send(wire.from,
 		net::Packet(wire.to.mac(), dest, wire.to.ip(), ip_dest, std::move(payload))
 	);
+}
+
+void net::Device::send_payload(const net::IP& ip_dest, std::unique_ptr<net::Packet::Payload>&& payload)
+{
+	LOG("Trying send a packet to %s", ip_dest.to_string().c_str());
+
+	auto arptable_res = m_arptable.find(ip_dest);
+
+	if (arptable_res != m_arptable.end())
+	{
+		LOG("%s | Sending packet...", arptable_res->second.wire.to.ip().to_string().c_str());
+		this->send_payload_to_wire(
+			arptable_res->second.mac, ip_dest, arptable_res->second.wire, std::move(payload)
+		);
+	}
+	else {
+		LOG("No mac address exists in the ARP table. Requesting the MAC address...");
+		this->arp_request(ip_dest);
+
+		if (m_arptable.find(ip_dest) == m_arptable.end()) {
+			LOG("Failed to request MAC address");
+			return;
+		}
+
+		LOG("Mac address requested. Trying to send package again");
+		this->send_payload(ip_dest, std::move(payload));
+	}
 }
 
 net::IP net::Device::subnet(const net::Port& port) const noexcept {
@@ -119,25 +130,34 @@ void net::Device::iterate_connections(std::function<void(wire_type)>&& func)
 	}
 }
 
-void net::Device::pre_process_packet(wire_type wire, net::Packet packet)
+bool net::Device::verify_in_packet(const wire_type wire, const net::Packet& packet) const noexcept
 {
-	LOG("%s | Processing packet from %s ...", wire.to.ip().to_string().c_str(), packet.ip_source().to_string().c_str());
+	if (wire.to.ip() != packet.ip_dest()) return false;
+	if (wire.to.mac() != packet.mac_dest()) return false;
+	if (this->subnet(wire.to) != (wire.to.mask() & packet.ip_dest())) return false;
+
+	return true;
+}
+
+void net::Device::preprocess_packet(wire_type wire, net::Packet packet)
+{
+	LOG("%s | Preprocessing packet from %s", wire.to.ip().to_string().c_str(), packet.ip_source().to_string().c_str());
 	const auto* arp_payload = dynamic_cast<const ARP*>(packet.payload());
 
 	if (arp_payload != nullptr && (wire.to.ip() == packet.ip_dest()))
 	{
 		if (arp_payload->operation_code() == net::ARP::Operation::Request) 
 		{
-			LOG("%s | Sending an ARP reply packet to %s ...", wire.to.ip().to_string().c_str(), packet.ip_source().to_string().c_str());
+			LOG("%s | Sending an ARP reply packet to %s", wire.to.ip().to_string().c_str(), packet.ip_source().to_string().c_str());
 
-			this->send_payload(packet.mac_source(), packet.ip_source(), wire, std::make_unique<net::ARP>(
+			this->send_payload_to_wire(packet.mac_source(), packet.ip_source(), wire, std::make_unique<net::ARP>(
 				net::ARP::Operation::Reply, wire.to.mac(), arp_payload->source_mac()
 			));
 		} else
 		if (arp_payload->operation_code() == net::ARP::Operation::Reply)
 		{
-			LOG("%s | Adding MAC address to ARP table: IP %s ...", wire.to.ip().to_string().c_str(), packet.ip_source().to_string().c_str());
-			m_arptable.emplace(packet.ip_source(), arptable_mapped_t{ wire.to, wire.from, arp_payload->source_mac()});
+			LOG("%s | Adding MAC address to ARP table: IP %s", wire.to.ip().to_string().c_str(), packet.ip_source().to_string().c_str());
+			m_arptable.emplace(packet.ip_source(), arptable_mapped_t{ wire, arp_payload->source_mac()});
 		}
 	}
 
