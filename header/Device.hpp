@@ -14,29 +14,29 @@ namespace net
 class Device
 {
 public:
-	using connections_type = std::vector<std::pair<std::shared_ptr<net::Port>, std::weak_ptr<net::Port>>>;
+	using connections_type = std::vector<std::pair<std::shared_ptr<net::Interface>, std::weak_ptr<net::Interface>>>;
 
 	Device() noexcept;
 
 	virtual ~Device() noexcept;
 
-	net::Port create_port(net::CIDR device_cidr) const noexcept;
+	net::Interface create_port(net::CIDR device_cidr) const noexcept;
 	
-	void add_port(net::CIDR device_cidr, std::weak_ptr<net::Port> other_port) noexcept;
+	void add_port(net::CIDR device_cidr, std::weak_ptr<net::Interface> other_port) noexcept;
 
 	void add_connection(Device& other, net::CIDR device_cidr, net::CIDR other_cidr) noexcept;
 
 	void send(const net::IP& dest);
 
-	net::IP subnet(const net::Port& port) const noexcept;
+	net::IP subnet(const net::Interface& port) const noexcept;
 
-	const net::Port& port(std::size_t index) const;
+	const net::Interface& port(std::size_t index) const;
 
 protected:
 
 	struct wire_type {
-		net::Port& to;
-		net::Port& from;
+		net::Interface& to;
+		net::Interface& from;
 	};
 
 	void arp_request(const net::IP& dest) noexcept;
@@ -51,8 +51,8 @@ protected:
 	bool verify_in_packet(const wire_type wire, const net::Packet& packet) const noexcept;
 
 	struct arptable_mapped_t {
-		//net::Port& to;
-		//net::Port& from;
+		//net::Interface& to;
+		//net::Interface& from;
 		wire_type wire;
 		const net::MAC mac;
 	};
@@ -63,7 +63,7 @@ private:
 	void preprocess_packet(wire_type wire, net::Packet packet);
 
 	connections_type m_connetions;
-	typename net::Port::recive_function_type m_process_in_packet;
+	typename net::Interface::recive_function_type m_process_in_packet;
 };
 
 }

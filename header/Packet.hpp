@@ -55,12 +55,12 @@ private:
 	std::unique_ptr<Payload> m_payload;
 };
 
-class Port
+class Interface
 {
 public:
 
-	using recived_port = Port&;
-	using sended_port = Port&;
+	using recived_port = Interface&;
+	using sended_port = Interface&;
 
 	using recive_function_type = std::function<void(recived_port, sended_port, Packet)>;
 
@@ -70,7 +70,7 @@ public:
 	using ip_type = typename net::CIDR::ip_type;
 	using ip_mask_type = typename net::CIDR::ip_mask_type;
 
-	Port(CIDR_type cidr, const recive_function_type& func) noexcept;
+	Interface(CIDR_type cidr, const recive_function_type& func) noexcept;
 
 	void send(recived_port other, Packet packet) noexcept;
 	void recive(sended_port from, Packet packet) noexcept;

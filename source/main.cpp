@@ -7,7 +7,7 @@ int main()
 {
 	using net::IP;
 	using net::IPMask;
-	using net::Port;
+	using net::Interface;
 
 	net::Computer d1;
 	net::Computer d2;

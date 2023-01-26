@@ -46,35 +46,35 @@ const net::Packet::Payload* net::Packet::payload() const noexcept {
 	return m_payload.get();
 }
 
-net::Port::Port(CIDR_type cidr, const recive_function_type& func) noexcept
+net::Interface::Interface(CIDR_type cidr, const recive_function_type& func) noexcept
 	: m_recive_func(func) 
 	, m_cidr(std::move(cidr))
 	, m_mac(MAC_type::generate())
 {}
 
-void net::Port::send(recived_port other, Packet packet) noexcept
+void net::Interface::send(recived_port other, Packet packet) noexcept
 {
 	//if (m_cidr.subnet() != other.m_cidr.subnet()) return;
 
 	other.recive(*this, std::move(packet));
 }
 
-void net::Port::recive(sended_port from, Packet packet) noexcept {
+void net::Interface::recive(sended_port from, Packet packet) noexcept {
 	this->m_recive_func(*this, from, std::move(packet));
 }
 
-const net::Port::ip_type& net::Port::ip() const noexcept {
+const net::Interface::ip_type& net::Interface::ip() const noexcept {
 	return m_cidr.ip();
 }
 
-const net::Port::ip_mask_type& net::Port::mask() const noexcept {
+const net::Interface::ip_mask_type& net::Interface::mask() const noexcept {
 	return m_cidr.mask();
 }
 
-const net::Port::MAC_type& net::Port::mac() const noexcept {
+const net::Interface::MAC_type& net::Interface::mac() const noexcept {
 	return m_mac;
 }
 
-const net::Port::CIDR_type& net::Port::cidr() const noexcept {
+const net::Interface::CIDR_type& net::Interface::cidr() const noexcept {
 	return m_cidr;
 }
