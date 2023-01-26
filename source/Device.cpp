@@ -1,4 +1,5 @@
 #include "Device.hpp"
+#include "Logging.hpp"
 
 #include <iostream>
 #include <cstring>
@@ -41,18 +42,23 @@ void net::Device::add_connection(Device& other, net::CIDR device_cidr, net::CIDR
 
 void net::Device::send(const net::IP& dest)
 {
+	LOG("Trying send a packet to %s ...", dest.to_string().c_str());
+
 	auto res = m_arptable.find(dest);
 	if (res != m_arptable.end()) 
 	{
+		LOG("%s | Sending packet...", res->second.to.ip().to_string().c_str());
 		this->send_payload(dest, {res->second.to, res->second.from}, std::make_unique<net::TCP>(
 			12345, 54321, res->second.mac
 		));
 	}
 	else {
+		LOG("No mac address exists in the arp table. Requesting the mac address...");
 		this->arp_request(dest);
 		
 		if (m_arptable.find(dest) == m_arptable.end()) return;
 
+		LOG("Mac address requested. Trying to send a package again");
 		this->send(dest);
 	}
 }
@@ -60,6 +66,7 @@ void net::Device::send(const net::IP& dest)
 
 void net::Device::arp_request(const net::IP& dest) noexcept
 {
+	LOG("Sending ARP request...");
 	this->iterate_connections([&](wire_type wire) 
 	{
 		this->send_payload(dest, wire, std::make_unique<net::ARP>(
@@ -112,18 +119,22 @@ void net::Device::iterate_connections(std::function<void(wire_type)>&& func)
 
 void net::Device::pre_process_packet(wire_type wire, net::Packet packet)
 {
+	LOG("%s | Processing packet from %s ...", wire.to.ip().to_string().c_str(), packet.source().to_string().c_str());
 	const auto* arp_payload = dynamic_cast<const ARP*>(packet.payload());
 
 	if (arp_payload != nullptr && (wire.to.ip() == packet.dest()))
 	{
 		if (arp_payload->operation_code() == net::ARP::Operation::Request) 
 		{
+			LOG("%s | Sending an ARP reply packet to %s ...", wire.to.ip().to_string().c_str(), packet.source().to_string().c_str());
+
 			this->send_payload(packet.source(), wire, std::make_unique<net::ARP>(
 				net::ARP::Operation::Reply, wire.to.mac(), arp_payload->source_mac()
 			));
 		} else
 		if (arp_payload->operation_code() == net::ARP::Operation::Reply)
 		{
+			LOG("%s | Adding MAC address to ARP table from %s ...", wire.to.ip().to_string().c_str(), packet.source().to_string().c_str());
 			m_arptable.emplace(packet.source(), arptable_mapped_t{ wire.to, wire.from, arp_payload->source_mac()});
 		}
 	}

@@ -45,8 +45,8 @@ void net::Port::send(recived_port other, Packet packet) noexcept
 {
 	if (m_cidr.subnet() != other.m_cidr.subnet()) return;
 
-	auto* tcp_packet = dynamic_cast<net::TCP*>(packet.payload());
-	if (tcp_packet != nullptr) { tcp_packet->get_mac() = this->m_mac; }
+	auto* tcp_payload = dynamic_cast<net::TCP*>(packet.payload());
+	if (tcp_payload != nullptr) { tcp_payload->get_mac() = this->m_mac; }
 	auto* arp_payload = dynamic_cast<net::ARP*>(packet.payload());
 	if (arp_payload != nullptr) { arp_payload->get_source_mac() = this->m_mac; }
 

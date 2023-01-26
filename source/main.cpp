@@ -1,3 +1,4 @@
+#include "Logging.hpp"
 #include "DeviceTypes.hpp"
 
 #include <iostream>
