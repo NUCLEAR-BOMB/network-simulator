@@ -146,6 +146,17 @@ void net::Device::preprocess_packet(wire_type wire, net::Packet packet)
 
 	if (arp_payload != nullptr && (wire.to.ip() == packet.ip_dest()))
 	{
+		#ifdef ENABLE_LOGGING
+		auto arptable_res =
+		#endif	
+		m_arptable.emplace(packet.ip_source(), arptable_mapped_t{ wire, arp_payload->source_mac() });
+		
+		#ifdef ENABLE_LOGGING
+		if (arptable_res.second) {
+			LOG("%s | Adding MAC address to ARP table: IP %s", wire.to.ip().to_string().c_str(), packet.ip_source().to_string().c_str());
+		}
+		#endif
+
 		if (arp_payload->operation_code() == net::ARP::Operation::Request) 
 		{
 			LOG("%s | Sending an ARP reply packet to %s", wire.to.ip().to_string().c_str(), packet.ip_source().to_string().c_str());
@@ -153,11 +164,6 @@ void net::Device::preprocess_packet(wire_type wire, net::Packet packet)
 			this->send_payload_to_wire(packet.mac_source(), packet.ip_source(), wire, std::make_unique<net::ARP>(
 				net::ARP::Operation::Reply, wire.to.mac(), arp_payload->source_mac()
 			));
-		} else
-		if (arp_payload->operation_code() == net::ARP::Operation::Reply)
-		{
-			LOG("%s | Adding MAC address to ARP table: IP %s", wire.to.ip().to_string().c_str(), packet.ip_source().to_string().c_str());
-			m_arptable.emplace(packet.ip_source(), arptable_mapped_t{ wire, arp_payload->source_mac()});
 		}
 	}
 
