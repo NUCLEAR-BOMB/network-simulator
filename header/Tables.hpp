@@ -37,13 +37,15 @@ public:
 
 	using container_type = std::deque<container_value_type>;
 
-	container_value_type& find(const net::IP& ip);
+	const container_value_type& find(const net::IP& ip) const;
 
 	void add_back(net::IP ip, net::IPMask mask, net::Interface& interface) noexcept;
 
 	void add_front(net::IP ip, net::IPMask mask, net::Interface& interface) noexcept;
 
 private:
+
+	bool has_duplicate(const net::IP& ip) const noexcept;
 
 	container_type m_container;
 };

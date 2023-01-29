@@ -14,6 +14,12 @@ net::Device::Device() noexcept
 	})
 {}
 
+net::Device::Device(net::CIDR cidr) noexcept
+	: Device()
+{
+	m_connetions.emplace_back(cidr, m_process_in_packet);
+}
+
 net::Device::~Device() noexcept {}
 
 net::Interface net::Device::create_port(net::CIDR device_cidr) const noexcept
@@ -33,10 +39,38 @@ void net::Device::add_connection(Device& other, net::CIDR device_cidr, net::CIDR
 	auto another_port = other.create_port(std::move(other_cidr));
 
 	device_interface.connect_to(&another_port);
-	another_port.connect_to(&device_interface);
 
 	m_connetions.push_back(std::move(device_interface));
 	other.m_connetions.push_back(std::move(another_port));
+}
+
+void net::Device::connect_to(Device& other)
+{
+	//net::Interface* device_interface;
+
+	const auto find_free_interface = [](const net::Interface& inter) {
+		return (inter.another() == nullptr);
+	};
+
+	auto device_interface = std::find_if(m_connetions.begin(), m_connetions.end(), find_free_interface);
+	auto other_interface  = std::find_if(other.m_connetions.begin(), other.m_connetions.end(), find_free_interface);
+
+	if (device_interface == m_connetions.end() || other_interface == other.m_connetions.end()) {
+		throw std::runtime_error("Don't have free connections");
+	}
+
+	device_interface->connect_to(&*other_interface);
+}
+
+void net::Device::connect_to(Device& other, net::CIDR other_cidr)
+{
+	auto device_interface = std::find_if(m_connetions.begin(), m_connetions.end(), [](const net::Interface& inter) {
+		return (inter.another() == nullptr);
+	});
+
+	other.m_connetions.emplace_back(std::move(other_cidr), other.m_process_in_packet);
+
+	device_interface->connect_to(&other.m_connetions.back());
 }
 
 void net::Device::send(const net::IP& dest)
@@ -61,6 +95,8 @@ void net::Device::arp_request(const net::IP& dest) noexcept
 
 	for (auto& interface : m_connetions)
 	{
+		if (interface.another() == nullptr) continue;
+
 		this->send_payload_to_interface(net::BROADCAST_MAC, dest, interface, 
 			std::make_unique<net::ARP>(
 				net::ARP::Operation::Request,

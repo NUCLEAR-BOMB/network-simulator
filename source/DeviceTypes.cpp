@@ -47,12 +47,22 @@ void net::Switch::process_packet(net::Interface& interface, net::Packet packet)
 		m_routingtable.add_back(packet.ip_source(), net::IPMask{255,255,255,255}, interface);
 	}
 
-	if (packet.mac_dest() == net::BROADCAST_MAC) 
+	if (packet.ip_source() == packet.ip_dest()) 
+	{
+		LOG("%s | Sending packet back to source", interface.ip().to_string().c_str());
+
+		interface.send(std::move(packet));
+		return;
+	}
+
+	if (packet.mac_dest() == net::BROADCAST_MAC)
 	{
 		//LOG("%s | BROADCAST | Resending packet to all available ports...", wire.to.ip().to_string().c_str());
 		
 		for (auto& conn : m_connetions)
 		{
+			if (conn.another() == nullptr) continue;
+
 			if (&conn == &interface) continue;
 			if (conn.cidr().subnet() != (conn.mask() & packet.ip_dest())) continue;
 

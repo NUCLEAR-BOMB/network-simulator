@@ -94,9 +94,14 @@ bool net::Interface::send(Packet packet) noexcept
 
 void net::Interface::connect_to(Interface* other) noexcept {
 	m_another = other;
+	other->m_another = this;
 }
 
 net::Interface* net::Interface::another() noexcept {
+	return m_another;
+}
+
+const net::Interface* net::Interface::another() const noexcept {
 	return m_another;
 }
 

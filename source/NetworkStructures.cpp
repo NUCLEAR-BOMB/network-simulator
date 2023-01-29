@@ -268,6 +268,10 @@ static void verify_cidr(const net::CIDR::ip_type& ip, const net::CIDR::ip_mask_t
 }
 #endif
 
+net::CIDR::CIDR(typename ip_type::byte_type f1, typename ip_type::byte_type f2, typename ip_type::byte_type f3, typename ip_type::byte_type f4) noexcept
+	: CIDR(net::IP{f1, f2, f3, f4})
+{}
+
 net::CIDR::CIDR(ip_type ip, ip_mask_type ipmask) noexcept
 	: m_ip(std::move(ip)), m_mask(std::move(ipmask))
 {

@@ -8,6 +8,7 @@
 #include <functional>
 #include <memory>
 #include <map>
+#include <initializer_list>
 
 namespace net
 {
@@ -15,15 +16,21 @@ namespace net
 class Device
 {
 public:
+
 	using connections_type = std::vector<net::Interface>;
 
 	Device() noexcept;
+
+	Device(net::CIDR cidr) noexcept;
 
 	virtual ~Device() noexcept;
 
 	net::Interface create_port(net::CIDR device_cidr) const noexcept;
 
 	void add_connection(Device& other, net::CIDR device_cidr, net::CIDR other_cidr) noexcept;
+
+	void connect_to(Device& other);
+	void connect_to(Device& other, net::CIDR other_cidr);
 
 	void send(const net::IP& dest);
 

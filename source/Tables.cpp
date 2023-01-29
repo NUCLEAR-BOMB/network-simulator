@@ -32,7 +32,7 @@ bool net::ARPTable::add_back(net::IP ip, net::MAC mac) noexcept
     return true;
 }
 
-net::RoutingTable::container_value_type& net::RoutingTable::find(const net::IP& ip)
+const net::RoutingTable::container_value_type& net::RoutingTable::find(const net::IP& ip) const
 {
     for (auto& elem : m_container)
     {
@@ -46,20 +46,23 @@ net::RoutingTable::container_value_type& net::RoutingTable::find(const net::IP& 
 
 void net::RoutingTable::add_back(net::IP ip, net::IPMask mask, net::Interface& interface) noexcept
 {
-    auto res = std::find_if(m_container.begin(), m_container.end(), [&](const auto& val) {
-        return (val.ip == ip);
-    });
-    if (res != m_container.end()) return;
+    if (this->has_duplicate(ip)) return;
 
     m_container.push_back(container_value_type{ std::move(ip), std::move(mask), interface });
 }
 
 void net::RoutingTable::add_front(net::IP ip, net::IPMask mask, net::Interface& interface) noexcept
 {
-    auto res = std::find_if(m_container.begin(), m_container.end(), [&](const auto& val) {
-        return (val.ip == ip);
-       });
-    if (res != m_container.end()) return;
+    if (this->has_duplicate(ip)) return;
 
     m_container.push_front(container_value_type{ std::move(ip), std::move(mask), interface });
+}
+
+bool net::RoutingTable::has_duplicate(const net::IP& ip) const noexcept
+{
+    auto res = std::find_if(m_container.cbegin(), m_container.cend(), [&](const auto& val) {
+        return (val.ip == ip);
+    });
+
+    return (res != m_container.end());
 }

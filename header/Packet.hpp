@@ -76,6 +76,7 @@ public:
 	void connect_to(Interface* other) noexcept;
 
 	Interface* another() noexcept;
+	const Interface* another() const noexcept;
 
 	const net::IP& ip() const noexcept;
 	const net::IPMask& mask() const noexcept;
