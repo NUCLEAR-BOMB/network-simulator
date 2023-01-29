@@ -59,32 +59,36 @@ class Interface
 {
 public:
 
-	using recived_port = Interface&;
-	using sended_port = Interface&;
+	using recive_function_type = std::function<void(Interface&, Packet)>;
 
-	using recive_function_type = std::function<void(recived_port, sended_port, Packet)>;
+	Interface(net::CIDR cidr, const recive_function_type& func) noexcept;
 
-	using CIDR_type = net::CIDR;
-	using MAC_type = net::MAC;
+	Interface(const Interface&) noexcept = delete;
+	Interface& operator=(const Interface&) noexcept = delete;
 
-	using ip_type = typename net::CIDR::ip_type;
-	using ip_mask_type = typename net::CIDR::ip_mask_type;
+	Interface(Interface&& other) noexcept;
+	Interface& operator=(Interface&& other) noexcept;
 
-	Interface(CIDR_type cidr, const recive_function_type& func) noexcept;
+	~Interface() noexcept;
 
-	void send(recived_port other, Packet packet) noexcept;
-	void recive(sended_port from, Packet packet) noexcept;
+	bool send(Packet packet) noexcept;
 
-	const ip_type& ip() const noexcept;
-	const ip_mask_type& mask() const noexcept;
-	const MAC_type& mac() const noexcept;
+	void connect_to(Interface* other) noexcept;
 
-	const CIDR_type& cidr() const noexcept;
+	Interface* another() noexcept;
+
+	const net::IP& ip() const noexcept;
+	const net::IPMask& mask() const noexcept;
+	const net::MAC& mac() const noexcept;
+
+	const net::CIDR& cidr() const noexcept;
 
 private:
 	const recive_function_type& m_recive_func;
-	CIDR_type m_cidr;
-	const MAC_type m_mac;
+	net::CIDR m_cidr;
+	net::MAC m_mac;
+
+	Interface* m_another;
 };
 
 }

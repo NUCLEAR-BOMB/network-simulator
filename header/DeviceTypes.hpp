@@ -9,7 +9,7 @@ class Computer : public net::Device
 {
 protected:
 
-	virtual void process_packet(wire_type wire, net::Packet packet) override;
+	virtual void process_packet(net::Interface& wire, net::Packet packet) override;
 
 private:
 
@@ -19,9 +19,7 @@ class Switch : public net::Device
 {
 protected:
 
-	void resend(wire_type wire, net::Packet packet) const;
-
-	virtual void process_packet(wire_type wire, net::Packet packet) override;
+	virtual void process_packet(net::Interface& wire, net::Packet packet) override;
 
 };
 

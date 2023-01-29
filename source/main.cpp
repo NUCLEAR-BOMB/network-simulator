@@ -12,20 +12,32 @@ int main()
 	net::Computer d1;
 	net::Computer d2;
 	net::Computer d3;
+	net::Computer d4;
 
-	net::Switch sw;
+	net::Switch sw1;
+	net::Switch sw2;
 
-	d1.add_connection(sw,
+	d1.add_connection(sw1,
 		{"192.168.1.100"},
 		{"192.168.1.2"}
 	);
-	d2.add_connection(sw,
+	d2.add_connection(sw1,
 		{"192.168.1.101"},
 		{"192.168.1.3"}
 	);
-	d3.add_connection(sw,
+
+	sw1.add_connection(sw2,
+		{"192.168.1.4"},
+		{"192.168.1.5"}
+	);
+
+	d3.add_connection(sw2,
 		{"192.168.1.102"},
-		{"192.168.1.4"}
+		{"192.168.1.6"}
+	);
+	d4.add_connection(sw2,
+		{"192.168.1.103"},
+		{"192.168.1.7"}
 	);
 
 	const auto& port0 = d1.port(0);

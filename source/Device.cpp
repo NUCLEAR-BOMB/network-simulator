@@ -9,8 +9,8 @@
 using namespace std::placeholders;
 
 net::Device::Device() noexcept
-	: m_process_in_packet([&](net::Interface& in, net::Interface& from, net::Packet pack) {
-		this->preprocess_packet(wire_type{in, from}, std::move(pack));
+	: m_process_in_packet([&](net::Interface& interface, net::Packet pack) {
+		this->preprocess_packet(interface, std::move(pack));
 	})
 {}
 
@@ -21,23 +21,22 @@ net::Interface net::Device::create_port(net::CIDR device_cidr) const noexcept
 	return { std::move(device_cidr), m_process_in_packet };
 }
 
-void net::Device::add_port(net::CIDR device_cidr, std::weak_ptr<net::Interface> other_port) noexcept
-{
-	m_connetions.push_back(
-		std::make_pair(
-			std::make_shared<net::Interface>(this->create_port(std::move(device_cidr))),
-			std::move(other_port)
-		)
-	);
-}
-
 void net::Device::add_connection(Device& other, net::CIDR device_cidr, net::CIDR other_cidr) noexcept
 {
-	auto device_port = std::make_shared<net::Interface>(this->create_port(device_cidr));
-	auto other_port  = std::make_shared<net::Interface>(other.create_port(other_cidr));
+	//auto device_port = std::make_shared<net::Interface>(this->create_port(device_cidr));
+	//auto other_port  = std::make_shared<net::Interface>(other.create_port(other_cidr));
 
-	m_connetions.emplace_back(device_port, other_port);
-	other.m_connetions.emplace_back(other_port, device_port);
+	//m_connetions.emplace_back(device_port, other_port);
+	//other.m_connetions.emplace_back(other_port, device_port);
+
+	auto device_interface = this->create_port(std::move(device_cidr));
+	auto another_port = other.create_port(std::move(other_cidr));
+
+	device_interface.connect_to(&another_port);
+	another_port.connect_to(&device_interface);
+
+	m_connetions.push_back(std::move(device_interface));
+	other.m_connetions.push_back(std::move(another_port));
 }
 
 void net::Device::send(const net::IP& dest)
@@ -47,44 +46,65 @@ void net::Device::send(const net::IP& dest)
 	));
 }
 
+void net::Device::routingtable_add_back(net::IP ip, net::IPMask mask, net::Interface& interface) noexcept {
+	m_routingtable.add_back(ip, mask, interface);
+}
+
+void net::Device::routingtable_add_front(net::IP ip, net::IPMask mask, net::Interface& interface) noexcept {
+	m_routingtable.add_front(ip, mask, interface);
+}
+
 
 void net::Device::arp_request(const net::IP& dest) noexcept
 {
 	LOG("Sending ARP request to %s", dest.to_string().c_str());
-	this->iterate_connections([&](wire_type wire) 
+
+	for (auto& interface : m_connetions)
 	{
-		this->send_payload_to_wire(net::BROADCAST_MAC, dest, wire, std::make_unique<net::ARP>(
-			net::ARP::Operation::Request,
-			wire.to.mac(), net::BROADCAST_MAC
-		));
-	});
+		this->send_payload_to_interface(net::BROADCAST_MAC, dest, interface, 
+			std::make_unique<net::ARP>(
+				net::ARP::Operation::Request,
+				interface.mac(), net::BROADCAST_MAC
+			)
+		);
+	}
 }
 
-void net::Device::send_payload_to_wire(const net::MAC& dest, const net::IP& ip_dest, wire_type wire, std::unique_ptr<net::Packet::Payload>&& payload) noexcept
+void net::Device::send_payload_to_interface(const net::MAC& dest, const net::IP& ip_dest, net::Interface& interface, std::unique_ptr<net::Packet::Payload>&& payload) noexcept
 {
-	wire.to.send(wire.from,
-		net::Packet(wire.to.mac(), dest, wire.to.ip(), ip_dest, std::move(payload))
+	bool send_res = interface.send(
+		net::Packet(interface.mac(), dest, interface.ip(), ip_dest, std::move(payload))
 	);
+
+	if (!send_res) {
+		LOG("Can't send a packet payload to %s", ip_dest.to_string().c_str());
+	}
 }
 
 void net::Device::send_payload(const net::IP& ip_dest, std::unique_ptr<net::Packet::Payload>&& payload)
 {
 	LOG("Trying send a packet to %s", ip_dest.to_string().c_str());
 
-	auto arptable_res = m_arptable.find(ip_dest);
+	auto* mac_dest = m_arptable.find(ip_dest);
 
-	if (arptable_res != m_arptable.end())
+	if (mac_dest)
 	{
-		LOG("%s | Sending packet...", arptable_res->second.wire.to.ip().to_string().c_str());
-		this->send_payload_to_wire(
-			arptable_res->second.mac, ip_dest, arptable_res->second.wire, std::move(payload)
+		//auto& interface = this->find_interface(ip_dest);
+
+		auto& rountintable_res = m_routingtable.find(ip_dest);
+		auto& interface = rountintable_res.interface;
+
+		LOG("%s | Sending packet...", interface.ip().to_string().c_str());
+
+		this->send_payload_to_interface(
+			*mac_dest, ip_dest, interface, std::move(payload)
 		);
 	}
 	else {
 		LOG("No mac address exists in the ARP table. Requesting the MAC address...");
 		this->arp_request(ip_dest);
 
-		if (m_arptable.find(ip_dest) == m_arptable.end()) {
+		if (!m_arptable.find(ip_dest)) {
 			LOG("Failed to request MAC address");
 			return;
 		}
@@ -94,18 +114,32 @@ void net::Device::send_payload(const net::IP& ip_dest, std::unique_ptr<net::Pack
 	}
 }
 
-net::IP net::Device::subnet(const net::Interface& port) const noexcept {
-	return port.cidr().subnet();
+void net::Device::send_packet(const net::IP& ip_dest, net::Packet packet) noexcept
+{
+	auto& res = this->m_routingtable.find(ip_dest);
+	auto& interface = res.interface;
+
+	LOG("%s | Sending packet to %s ...", interface.ip().to_string().c_str(), ip_dest.to_string().c_str());
+
+	auto send_res = interface.send(std::move(packet));
+
+	if (!send_res) {
+		LOG("Can't send a packet to %s", ip_dest.to_string().c_str());
+	}
+}
+
+net::IP net::Device::subnet(const net::Interface& inter) const noexcept {
+	return inter.cidr().subnet();
 }
 
 const net::Interface& net::Device::port(std::size_t index) const {
-	return *m_connetions.at(index).first;
+	return m_connetions.at(index);
 }
 
 
-void net::Device::process_packet(wire_type wire, net::Packet packet)
+void net::Device::process_packet(net::Interface& interface, net::Packet packet)
 {
-	if (wire.to.ip() != packet.ip_dest()) return;
+	if (interface.ip() != packet.ip_dest()) return;
 
 	const auto* tcp_payload = dynamic_cast<const TCP*>(packet.payload());
 	if (tcp_payload == nullptr) throw std::runtime_error("Wrong packet payload type");
@@ -116,56 +150,37 @@ void net::Device::process_packet(wire_type wire, net::Packet packet)
 		<< "\tport: " << tcp_payload->dest_port() << '\n';
 }
 
-void net::Device::iterate_connections(std::function<void(wire_type)>&& func)
+bool net::Device::verify_in_packet(const net::Interface& interface, const net::Packet& packet) const noexcept
 {
-	for (auto conn = m_connetions.begin(); conn != m_connetions.end();)
-	{
-		if (std::shared_ptr<net::Interface> conn_second = conn->second.lock()) {
-			func({*(conn->first), *(conn_second)});
-		}
-		else {
-			conn = m_connetions.erase(conn); continue;
-		}
-		++conn;
-	}
-}
-
-bool net::Device::verify_in_packet(const wire_type wire, const net::Packet& packet) const noexcept
-{
-	if (wire.to.ip() != packet.ip_dest()) return false;
-	if (wire.to.mac() != packet.mac_dest()) return false;
-	if (this->subnet(wire.to) != (wire.to.mask() & packet.ip_dest())) return false;
+	if (interface.ip() != packet.ip_dest()) return false;
+	if (interface.mac() != packet.mac_dest()) return false;
+	if (this->subnet(interface) != (interface.mask() & packet.ip_dest())) return false;
 
 	return true;
 }
 
-void net::Device::preprocess_packet(wire_type wire, net::Packet packet)
+void net::Device::preprocess_packet(net::Interface& interface, net::Packet packet)
 {
-	LOG("%s | Preprocessing packet from %s", wire.to.ip().to_string().c_str(), packet.ip_source().to_string().c_str());
+	LOG("%s | Preprocessing packet from %s", interface.ip().to_string().c_str(), packet.ip_source().to_string().c_str());
 	const auto* arp_payload = dynamic_cast<const ARP*>(packet.payload());
 
-	if (arp_payload != nullptr && (wire.to.ip() == packet.ip_dest()))
+	if (arp_payload != nullptr && (interface.ip() == packet.ip_dest()))
 	{
-		#ifdef ENABLE_LOGGING
-		auto arptable_res =
-		#endif	
-		m_arptable.emplace(packet.ip_source(), arptable_mapped_t{ wire, arp_payload->source_mac() });
-		
-		#ifdef ENABLE_LOGGING
-		if (arptable_res.second) {
-			LOG("%s | Adding MAC address to ARP table: IP %s", wire.to.ip().to_string().c_str(), packet.ip_source().to_string().c_str());
-		}
-		#endif
+		LOG("%s | Adding MAC address to ARP table: IP %s", interface.ip().to_string().c_str(), packet.ip_source().to_string().c_str());
+		m_arptable.add_back(packet.ip_source(), arp_payload->source_mac());
+
+		LOG("%s | Adding interface to routing table", interface.ip().to_string().c_str());
+		m_routingtable.add_back(packet.ip_source(), net::IPMask{255,255,255,255}, interface);
 
 		if (arp_payload->operation_code() == net::ARP::Operation::Request) 
 		{
-			LOG("%s | Sending an ARP reply packet to %s", wire.to.ip().to_string().c_str(), packet.ip_source().to_string().c_str());
+			LOG("%s | Sending an ARP reply packet to %s", interface.ip().to_string().c_str(), packet.ip_source().to_string().c_str());
 
-			this->send_payload_to_wire(packet.mac_source(), packet.ip_source(), wire, std::make_unique<net::ARP>(
-				net::ARP::Operation::Reply, wire.to.mac(), arp_payload->source_mac()
+			this->send_payload_to_interface(packet.mac_source(), packet.ip_source(), interface, std::make_unique<net::ARP>(
+				net::ARP::Operation::Reply, interface.mac(), arp_payload->source_mac()
 			));
 		}
 	}
 
-	this->process_packet(wire, std::move(packet));
+	this->process_packet(interface, std::move(packet));
 }
