@@ -1,10 +1,9 @@
-
 /*
 
 !.gitignore
-
-!header/
-!source/
-
 !CMakeLists.txt
-!Visualizations.natvis
+!vis.natvis
+!include/
+!src/
+!test/
+!cmake/

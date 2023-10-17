@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+	<Type Name="ns::ip">
+		<DisplayString>{ip_data[0],nvod}.{ip_data[1],nvod}.{ip_data[2],nvod}.{ip_data[3],nvod}</DisplayString>
+	</Type>
+	<Type Name="ns::packet">
+		<DisplayString>{{ size={*(size_t*)packet_data._Ptr} }}</DisplayString>
+		<Expand>
+			<Item Name="[size]" ExcludeView="simple">*(size_t*)packet_data._Ptr</Item>
+			<ArrayItems>
+				<Size>*(size_t*)packet_data._Ptr</Size>
+				<ValuePointer>(uint8_t*)packet_data._Ptr + sizeof(size_t)</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+	<Type Name="ns::ip_client">
+		<DisplayString>{{ ip={my_ip} }}</DisplayString>
+		<Expand>
+			<Item Name="[ip]">my_ip</Item>
+			<Item Name="[packets]">received_packets</Item>
+			<Item Name="[connections]">connections</Item>
+		</Expand>
+	</Type>
+	<Type Name="ns::packet_pull">
+		<DisplayString>{{ size={pull_size} }}</DisplayString>
+		<Expand>
+			<Item Name="[size]" ExcludeView="simple">pull_size</Item>
+			<ArrayItems>
+				<Size>pull_size</Size>
+				<ValuePointer>pull_array._Elems</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+</AutoVisualizer>

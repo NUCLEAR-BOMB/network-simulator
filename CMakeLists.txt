@@ -1,33 +1,31 @@
-cmake_minimum_required(VERSION 3.24 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.25 FATAL_ERROR)
 
-project("NetworkSimulator" CXX)
+project(network-simulator)
 
-option(LOGGING "Enable logging in the program" YES)
-
-file(GLOB_RECURSE PROJECT_FILES CONFIGURE_DEPENDS 
-	"${CMAKE_SOURCE_DIR}/header/*.hpp"
-	"${CMAKE_SOURCE_DIR}/source/*.cpp"
+add_library(network-simulator-lib INTERFACE
+    "include/packet.hpp"
+    "include/packet_pull.hpp"
+    "include/client.hpp"
+    "include/ip_client.hpp"
 )
+target_include_directories(network-simulator-lib INTERFACE "include/")
+target_compile_features(network-simulator-lib INTERFACE cxx_std_17)
 
-add_executable(${PROJECT_NAME} ${PROJECT_FILES})
-
-target_compile_features	  (${PROJECT_NAME} PUBLIC "cxx_std_14")
-target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/header")
-
-target_compile_options(${PROJECT_NAME} PUBLIC
-	$<IF:$<CXX_COMPILER_ID:MSVC>,
-		/W4 /WX
-	,
-		-Wall -Wextra -pedantic -Werror
-	>
+include(FetchContent)
+FetchContent_Declare(betterstring
+    GIT_REPOSITORY https://github.com/NUCLEAR-BOMB/betterstring.git
+    GIT_TAG eca85b0140151d3c13322b27bc9ad9b969cd3581
 )
+FetchContent_MakeAvailable(betterstring)
+target_link_libraries(network-simulator-lib INTERFACE betterstring)
 
-if (LOGGING)
-	target_compile_definitions(${PROJECT_NAME} PRIVATE 
-		"ENABLE_LOGGING"
-	)
+if (CMAKE_GENERATOR MATCHES "Visual Studio")
+    target_sources(network-simulator-lib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/vis.natvis")
 endif()
 
-if (MSVC_IDE)
-	target_sources(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/Visualizations.natvis>)
-endif()
+add_executable(network-simulator
+    "src/main.cpp"
+)
+target_link_libraries(network-simulator PRIVATE network-simulator-lib)
+
+add_subdirectory(test)
