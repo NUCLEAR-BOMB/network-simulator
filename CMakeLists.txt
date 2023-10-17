@@ -2,12 +2,16 @@ cmake_minimum_required(VERSION 3.25 FATAL_ERROR)
 
 project(network-simulator)
 
-add_library(network-simulator-lib INTERFACE
-    "include/packet.hpp"
-    "include/packet_pull.hpp"
-    "include/client.hpp"
-    "include/ip_client.hpp"
+set(files
+    packet.hpp
+    packet_pull.hpp
+    client.hpp
+    ip_client.hpp
+    ip.hpp
 )
+list(TRANSFORM files PREPEND "include/")
+
+add_library(network-simulator-lib INTERFACE ${files})
 target_include_directories(network-simulator-lib INTERFACE "include/")
 target_compile_features(network-simulator-lib INTERFACE cxx_std_17)
 

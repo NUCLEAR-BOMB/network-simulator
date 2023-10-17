@@ -1,11 +1,9 @@
 include("${PROJECT_SOURCE_DIR}/cmake/compiler_warnings.cmake")
 
-add_executable(network-simulator-test
-    "packet.test.cpp"
-    "packet_pull.test.cpp"
-    "client.test.cpp"
-    "ip_client.test.cpp"
-)
+set(test_files packet packet_pull client ip_client ip)
+list(TRANSFORM test_files APPEND ".test.cpp")
+
+add_executable(network-simulator-test ${test_files})
 
 target_add_warnings(network-simulator-test)
 
